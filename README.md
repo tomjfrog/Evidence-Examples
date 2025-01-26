@@ -186,7 +186,7 @@ This section of [build.yml](https://github.com/jfrog/Evidence-Examples/tree/main
 
 ## Create an External Policy to Potentially Block Release Bundle Promotion
 
-When the Evidence service is used in conjunction with JFrog Xray, each Release Bundle promotion generates evidence in the form of a CycloneDX SBOM. You can create a policy in an external tool (for example, a rego policy) that reviews the contents of the CycloneDX evidence file and decides whether to block the promotion because the Release Bundle fails to meet all your organization's requirements for promotion to the next stage of your SDLC.
+When the Evidence service is used in conjunction with JFrog Xray, each Release Bundle promotion generates evidence in the form of a CycloneDX SBOM. You can create a policy in an external tool (for example, a rego policy) that reviews the contents of the CycloneDX evidence file and decides whether to block the promotion (because the Release Bundle fails to meet all your organization's requirements for promotion to the next stage of your SDLC).
 
 To see a sample rego policy, go [here](https://github.com/jfrog/Evidence-Examples/blob/main/policy/policy.rego).
 For more information about integrating Release Lifecycle Management and Evidence with Xray, see [Scan Release Bundles (v2) with Xray](https://jfrog.com/help/r/jfrog-artifactory-documentation/scan-release-bundles-v2-with-xray).
