@@ -49,6 +49,11 @@ func main() {
         fmt.Println("JIRA token not found, set jira_token variable")
         os.Exit(1)
     }
+    jira_url := os.Getenv("jira_url")
+    if jira_url == "" {
+        fmt.Println("JIRA URL not found, set jira_url variable")
+        os.Exit(1)
+    }
     jira_username := os.Getenv("jira_username")
     if jira_username == "" {
         fmt.Println("JIRA username not found, set jira_username variable")
@@ -59,7 +64,7 @@ func main() {
         Username: jira_username,
 		APIToken: jira_token,
 	}
-    client, err := jira.NewClient("https://jfrog-int.atlassian.net", tp.Client())
+    client, err := jira.NewClient(jira_url, tp.Client())
     if err != nil {
 		fmt.Printf("\njira.NewClient error: %v\n", err)
 		os.Exit(1)
