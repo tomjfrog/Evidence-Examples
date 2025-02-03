@@ -1,0 +1,35 @@
+name: jira-evidence-example
+
+on:
+  [workflow_dispatch]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  docker-build-with-jira-evidence:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install jfrog cli
+        id:   setup-cli
+        uses: jfrog/setup-jfrog-cli@v4
+        env:
+          JF_URL: https://${{ vars.ARTIFACTORY_URL }}
+        with:
+         oidc-provider-name: jfrog-github-oidc
+
+      - uses: actions/checkout@v4
+
+      - name: Get git commit messages
+        run: |
+            # Get the latest commit that triggered the build
+            START_COMMIT=$(git rev-list --max-parents=0 HEAD)
+            # Or use: START_COMMIT=$(git rev-parse HEAD~1) for the previous commit after a PR is merged
+            
+            # Get the commit messages since the last tag or since the base commit in PR
+            COMMIT_MESSAGES=$(git log --oneline "$START_COMMIT"..HEAD)
+            
+            echo "Commit messages that triggered this build:"
+            echo "$COMMIT_MESSAGES"
+
