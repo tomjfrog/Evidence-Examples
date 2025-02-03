@@ -28,6 +28,9 @@ jobs:
           
 
       - name: Get git commit messages
+        env:
+            jira_token: ${{ secrets.JIRA_TOKEN }}
+            jira_username: ${{ secrets.JIRA_USERNAME }}
         run: |
             # Get the latest commit that triggered the build
             START_COMMIT=$(git rev-list --max-parents=0 HEAD)
