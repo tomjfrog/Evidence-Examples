@@ -39,9 +39,10 @@ jobs:
           
             echo "git log -1 --format=%H %s"
             git log -1 --format="%H %s"
+            START_COMMIT1=$(git log -1 )
           
             # Get the commit messages since the last tag or since the base commit in PR
-            COMMIT_MESSAGES=$(git log --oneline $START_COMMIT...HEAD)
+            COMMIT_MESSAGES=$(git log --format="%H %s" $START_COMMIT1...HEAD)
             
             echo "Commit messages that triggered this build:"
             echo "$COMMIT_MESSAGES"
