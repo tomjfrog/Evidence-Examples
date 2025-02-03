@@ -20,7 +20,7 @@ jobs:
         id:   setup-cli
         uses: jfrog/setup-jfrog-cli@v4
         env:
-          JF_URL: https://${{ vars.ARTIFACTORY_URL }}
+          JF_URL: ${{ vars.ARTIFACTORY_URL }}
         with:
          oidc-provider-name: jfrog-github-oidc
 
