@@ -25,18 +25,18 @@ jobs:
          oidc-provider-name: jfrog-github-oidc
 
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # fetch all history for all branches and tags
+          
 
       - name: Get git commit messages
         run: |
             # Get the latest commit that triggered the build
             START_COMMIT=$(git rev-list --max-parents=0 HEAD)
             echo "START_COMMIT=$START_COMMIT"            
-            git log --oneline "$START_COMMIT"..HEAD    
+            #git log --oneline "$START_COMMIT"..HEAD    
+            git log --oneline
             
             # Get the commit messages since the last tag or since the base commit in PR
-            COMMIT_MESSAGES=$(git log --oneline "$START_COMMIT"..HEAD)
+            COMMIT_MESSAGES=$(git log --oneline $START_COMMIT...HEAD)
             
             echo "Commit messages that triggered this build:"
             echo "$COMMIT_MESSAGES"
