@@ -46,11 +46,11 @@ jobs:
           push: true
           provenance: false
           platforms: linux/amd64 #, linux/arm64
-          tags: ${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_REPO }}/${{ env.IMAGE_NAME }}
+          tags: ${{ vars.JF_URL }}/${{ env.DOCKER_REPO }}/${{ env.IMAGE_NAME }}
 
       - name: add docker package to build
         run: |
-          echo "${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_REPO }}/${{ env.IMAGE_NAME }}:${{ github.run_number }}@${{ steps.docker-build.outputs.digest }}" > metadata.json
+          echo "${{ vars.JF_URL }}/${{ env.DOCKER_REPO }}/${{ env.IMAGE_NAME }}:${{ github.run_number }}@${{ steps.docker-build.outputs.digest }}" > metadata.json
           jf rt build-docker-create dev-docker-local --image-file metadata.json --build-name ${{ env.BUILD_NAME }} --build-number ${{ github.run_number }}
 
       - name: Publish build info
