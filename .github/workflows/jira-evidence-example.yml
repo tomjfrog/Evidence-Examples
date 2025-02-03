@@ -30,7 +30,10 @@ jobs:
         run: |
             # Get the latest commit that triggered the build
             START_COMMIT=$(git rev-list --max-parents=0 HEAD)
+            echo "START_COMMIT=$START_COMMIT"            
             # Or use: START_COMMIT=$(git rev-parse HEAD~1) for the previous commit after a PR is merged
+            START_COMMIT1=$(git rev-parse HEAD~1)
+            echo "START_COMMIT1=$START_COMMIT1"  
             
             # Get the commit messages since the last tag or since the base commit in PR
             COMMIT_MESSAGES=$(git log --oneline "$START_COMMIT"..HEAD)
