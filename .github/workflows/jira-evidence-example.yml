@@ -46,6 +46,7 @@ jobs:
           push: true
           provenance: false
           platforms: linux/amd64 #, linux/arm64
+          build-args: REPO_URL=${{ vars.JF_URL }}/example-project-docker-dev-remote
           tags: ${{ vars.JF_URL }}/${{ env.DOCKER_REPO }}/${{ env.IMAGE_NAME }}
 
       - name: add docker package to build
