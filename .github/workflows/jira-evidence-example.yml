@@ -1,7 +1,7 @@
 name: jira-evidence-example
 
 on:
-  [workflow_dispatch]
+  workflow_dispatch:  # This allows manual triggering of the workflow
 
 permissions:
   id-token: write
