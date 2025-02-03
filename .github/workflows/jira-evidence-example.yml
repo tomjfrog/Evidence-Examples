@@ -41,5 +41,5 @@ jobs:
             git log -1 --format="%H %s"
             START_COMMIT1=$(git log -1 --format="%H %s")
             echo "START_COMMIT1=$START_COMMIT1"
-            second_element=$(echo "$input" | cut -d' ' -f2)
-            echo "$second_element"
+            second_element=$(echo "$START_COMMIT1" | cut -d' ' -f2)
+            echo "second_element=$second_element"
