@@ -25,6 +25,8 @@ jobs:
          oidc-provider-name: jfrog-github-oidc
 
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # fetch all history for all branches and tags
 
       - name: Get git commit messages
         run: |
