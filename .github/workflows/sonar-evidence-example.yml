@@ -41,12 +41,15 @@ jobs:
           curl -sL https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.6.2.2472-linux.zip -o sonar-scanner-cli-4.6.2.2472-linux.zip
           unzip sonar-scanner-cli-4.6.2.2472-linux.zip
           export PATH=$PATH:$PWD/sonar-scanner-4.6.2.2472-linux/bin
+          pwd
+          ls -l $PWD/sonar-scanner-4.6.2.2472-linux/bin/
+          echo "$PWD/sonar-scanner-4.6.2.2472-linux/bin"
 
       - name: Run SonarScanner
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
-          $PATH:$PWD/sonar-scanner-4.6.2.2472-linux/bin/sonar-scanner -Dsonar.token=$SONAR_TOKEN
+          $PWD/sonar-scanner-4.6.2.2472-linux/bin/sonar-scanner -Dsonar.token=$SONAR_TOKEN
 
       - name: Log in to Artifactory Docker Registry
         uses: docker/login-action@v3
