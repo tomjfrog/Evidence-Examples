@@ -62,6 +62,7 @@ jobs:
             -Dsonar.projectKey=test-evidence \
             -Dsonar.organization=my-evidence-test-org \
             -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.java.jdkHome=$JAVA_HOME \
             -Dsonar.token=$SONAR_TOKEN
 
       - name: Log in to Artifactory Docker Registry
