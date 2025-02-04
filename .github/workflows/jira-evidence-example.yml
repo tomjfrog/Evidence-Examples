@@ -84,10 +84,10 @@ jobs:
             # Check if the second element matches the JIRA ID format
             if [[ $second_element =~ ^[A-Z]+-[0-9]+$ ]]; then
                 echo "The second element is a valid JIRA ID: $second_element"
-                ./examples/jira-transition-example/bin/jira-transition-checker-linux-amd64 aaa $second_element > predicate.json
-                echo "---------predicate---------"
+                ./examples/jira-transition-example/bin/jira-transition-checker-linux-amd64 "Finance Approval" $second_element > predicate.json
+                echo "\n---------predicate---------"
                 cat predicate.json
-                echo "----------------------------"
+                echo "\n----------------------------"
                 # Attach evidence onto build using JFrog CLI                
                 jf evd create \
                   --build-name "${{ env.BUILD_NAME }}" \

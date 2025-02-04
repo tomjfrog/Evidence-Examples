@@ -17,6 +17,9 @@ import (
         {
         "jira_id": "<jira-id>",
         "transition_found": "<true/false>"
+        "author": "<user display name>",
+        "author_user_name": "<user email>",
+        "transition_time": "2025-02-04T08:14:03.559+0200"
         }
     ]
    }
@@ -34,6 +37,9 @@ type TransitionCheckResponse struct {
 type JiraTransitionResult struct {
 	JiraId           string `json:"jira_id"`
 	TransitionFound  bool   `json:"transition_found"`
+	Author           string `json:"author"`
+	AuthorEmail   string `json:"author_user_name"`
+	TransitionTime          string `json:"transition_time"`
 }
 
 func main() {
@@ -66,37 +72,48 @@ func main() {
 	}
     client, err := jira.NewClient(jira_url, tp.Client())
     if err != nil {
-		fmt.Printf("\njira.NewClient error: %v\n", err)
+		fmt.Println("jira.NewClient error: %v\n", err)
 		os.Exit(1)
 	}
     // initialize the response
     transitionCheckResponse := TransitionCheckResponse{}
     transitionCheckResponse.AllJiraTransitionsFound = true
     transitionCheckResponse.Transition = transitionChecked
-
+    transitionFound := false
     // loop over all JIRAs sent to the fucntion
     for _, jiraId := range os.Args[2:] {
-        transitionFound := false
-
-        transitions, _, err := client.Issue.GetTransitions(context.Background(), jiraId)
-        if err != nil {
-            fmt.Printf("Got error for jira id %d: %v", jiraId, err)
+        //fmt.Println("-----------Checking JIRA ", jiraId)
+        transitionFound = false
+        issue, _, _ := client.Issue.Get(context.Background(), jiraId , &jira.GetQueryOptions{Expand: "changelog"})
+        if issue == nil {
+            fmt.Println("Got error for extracting issue with jira id: ", jiraId, "error", err)
             os.Exit(1)
-        } else if transitions != nil {
-            //fmt.Printf("Got %d transitions for jira id %d\n",jiraId , len(transitions))
-            // checking if the transition is found
-            for _, transition := range transitions {
-                if transition.Name == transitionChecked {
-                    transitionFound = true
-                    break
+        }
+         // adding the jira result to the list of results
+        jiraTransitionResult := JiraTransitionResult{
+            JiraId: jiraId,
+        }
+
+        if len(issue.Changelog.Histories) > 0 {
+            //fmt.Println("history found for jira id:", jiraId)
+            for _, history := range issue.Changelog.Histories {
+                for _, changelogItems := range history.Items {
+                    //fmt.Println("jira id:", jiraId, "field", changelogItems.Field, "FieldType",  changelogItems.FieldType, "toString",  changelogItems.ToString)
+                    if changelogItems.Field == "status" {
+                        //fmt.Println("Transition for jira", jiraId, "FromString", changelogItems.FromString, "ToString" , changelogItems.ToString, "Created", history.Created, "Author", history.Author)
+                        if changelogItems.ToString == transitionChecked {
+                            transitionFound = true
+                            jiraTransitionResult.Author = history.Author.DisplayName
+                            jiraTransitionResult.AuthorEmail = history.Author.EmailAddress
+                            jiraTransitionResult.TransitionTime = history.Created
+                           // fmt.Println("Transition name for jira", jiraId, "found")
+                            break // once found we can continue to the next jira
+                        }
+                    }
                 }
             }
         }
-        // adding the jira result to the list of results
-        jiraTransitionResult := JiraTransitionResult{
-            JiraId: jiraId,
-            TransitionFound: transitionFound,
-        }
+        jiraTransitionResult.TransitionFound = transitionFound
         transitionCheckResponse.Tasks = append(transitionCheckResponse.Tasks, jiraTransitionResult)
         // check if all transitions are found
         if !transitionFound {
