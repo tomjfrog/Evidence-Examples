@@ -41,7 +41,7 @@ jobs:
 
       - name: Build and Push Docker image
         uses: docker/build-push-action@v6
-        id: build
+        id: docker-build
         with:
           push: true
           provenance: false
@@ -51,7 +51,7 @@ jobs:
 
       - name: add docker package to build
         run: |
-          echo "${{ vars.JF_URL }}/${{ env.DOCKER_REPO }}/${{ env.IMAGE_NAME }}:${{ github.run_number }}@${{ steps.docker-build.outputs.digest }}" > metadata.json
+          echo "${{ vars.JF_URL }}/${{ env.DOCKER_REPO }}/${{ env.IMAGE_NAME }}@${{ steps.docker-build.outputs.digest }}" > metadata.json
           jf rt build-docker-create dev-docker-local --image-file metadata.json --build-name ${{ env.BUILD_NAME }} --build-number ${{ github.run_number }}
 
       - name: Publish build info
