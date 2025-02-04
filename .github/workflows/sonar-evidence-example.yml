@@ -37,9 +37,9 @@ jobs:
           go-version: 1.18
 
       - name: Install SonarQube Scanner
-        run: |
-          curl -sL https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.6.2.2472-linux.zip -o sonar-scanner-cli-4.6.2.2472-linux.zip
-          unzip sonar-scanner-cli-4.6.2.2472-linux.zip
+        run: |          
+          curl -sL  -sSLo sonar-scanner.zip  https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.6.2.2472-linux.zip
+          unzip sonar-scanner.zip
           export PATH=$PATH:$PWD/sonar-scanner-4.6.2.2472-linux/bin
           pwd
           ls -l $PWD/sonar-scanner-4.6.2.2472-linux/bin/
@@ -49,7 +49,11 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
-          $PWD/sonar-scanner-4.6.2.2472-linux/bin/sonar-scanner -Dsonar.token=$SONAR_TOKEN
+          $PWD/sonar-scanner-4.6.2.2472-linux/bin/sonar-scanner \
+            -Dsonar.projectKey=test-evidence \
+            -Dsonar.organization=my-evidence-test-org \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.token=$SONAR_TOKEN
 
       - name: Log in to Artifactory Docker Registry
         uses: docker/login-action@v3
