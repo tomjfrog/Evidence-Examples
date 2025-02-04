@@ -57,6 +57,7 @@ jobs:
           echo "java version" 
           java -version
           echo "JAVA_HOME=$JAVA_HOME"
+          cat /home/runner/work/Evidence-Examples/Evidence-Examples/sonar-project.properties
           echo "Start to scan"
           $PWD/sonar-scanner-4.6.2.2472-linux/bin/sonar-scanner \
             -Dsonar.projectKey=test-evidence \
