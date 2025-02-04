@@ -94,8 +94,8 @@ jobs:
                   --build-number "${{ github.run_number }}" \
                   --predicate ./predicate.json \
                   --predicate-type https://jfrog.com/evidence/build-jira-transition/v1 \
-                  --key "${{ secrets.PRIVATE_KEY }}" \
-                  --key-alias ${{ vars.JF_KEY_ALIAS }}
+                  --key "${{ secrets.JIRA_TEST_PKEY }}" \
+                  --key-alias ${{ vars.JIRA_TEST_KEY }}
                 
             else
                 echo "The second element is not a valid JIRA ID"
