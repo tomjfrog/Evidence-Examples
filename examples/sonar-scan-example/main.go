@@ -175,37 +175,41 @@ func main() {
 
 func getReport(ctx context.Context , client *http.Client, logger *log.Logger, ceTaskUrl string, sonar_token string) (SonarTaskResponse, error) {
 	 // Make the HTTP GET request
+	logger.Println("getReport ceTaskUrl:",ceTaskUrl)
 	req, err := http.NewRequestWithContext(ctx, "GET", ceTaskUrl, nil)
 	req.Header.Set("Authorization", "Bearer " + sonar_token)
 	resp, err := client.Do(req)
 	if err != nil {
 		return SonarTaskResponse{}, fmt.Errorf("Error making the request, url:",ceTaskUrl, "error", err)
 	}
-	if resp.StatusCode != http.StatusOK {
-		body, err := io.ReadAll(resp.Body)
-		return SonarTaskResponse{}, fmt.Errorf("error getting response from", ceTaskUrl, " returned ", resp.StatusCode, " response body ", body, "error", err)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return SonarTaskResponse{},  fmt.Errorf("getReport error readinf body error:",err)
 	}
+
+	if resp.StatusCode != http.StatusOK {
+		return SonarTaskResponse{}, fmt.Errorf("getReport error getting response from", ceTaskUrl, " returned ", resp.StatusCode, " response body ", body)
+	}
+
+    logger.Println("getReport resp.StatusCode:", resp.StatusCode)
 
     defer func(Body io.ReadCloser) {
         err := Body.Close()
         if err != nil {
-        logger.Println("Error reding SonarTaskResponse, error:", err)
+          logger.Println("Error reding SonarTaskResponse, error:", err)
             // not printing an error so stdout is not effected
         }
 	}(resp.Body)
 
-	if resp.StatusCode != http.StatusOK {
-		body, err := io.ReadAll(resp.Body)
-		return SonarTaskResponse{}, fmt.Errorf("error getting response from", ceTaskUrl, " returned ", resp.StatusCode, " response body ", body, "error", err)
-	}
 
-    taskResponse := &SonarTaskResponse{}
-	err = json.NewDecoder(resp.Body).Decode(taskResponse)
-	if err != nil {
+
+    var taskResponse SonarTaskResponse
+    err = json.Unmarshal(body, &taskResponse)
+    if err != nil {
+		log.Println("get temp credentials response body ", string(body))
 		return SonarTaskResponse{}, fmt.Errorf("error decoding report response for report", ceTaskUrl, "error",  err)
 	}
-
-	return *taskResponse, nil
+	return taskResponse, nil
 }
 
 func getAnalysis(ctx context.Context, client *http.Client, logger *log.Logger, sonar_token string, analysisId string) (SonarAnalysis, error) {
