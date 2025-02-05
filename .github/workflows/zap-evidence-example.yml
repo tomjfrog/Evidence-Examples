@@ -14,11 +14,12 @@ permissions:
 
 
 jobs:
-  ran-and-zap-scan-evidence:
+  zap-evidence-example:
     runs-on: ubuntu-latest
     env:
       DOCKER_REPO: 'test-docker-local'
-      IMAGE_NAME: 'my-very-cool-image:${{ github.run_number }}'
+      IMAGE_NAME: 'my-very-cool-image'
+      IMAGE_TAG: '40''
       BUILD_NAME: 'zap-evidence-example'
     steps:
       - name: Display workflow and job names
@@ -38,12 +39,28 @@ jobs:
 
       - name: start webgoat
         run: |
-          docker run -p 127.0.0.1:8080:8080 -p 127.0.0.1:9090:9090 -e TZ=Europe/Amsterdam webgoat/webgoat
+          docker run -d -p 127.0.0.1:8080:8080 -p 127.0.0.1:9090:9090 -e TZ=Europe/Amsterdam webgoat/webgoat
 
       - name: ZAP Scan
-        uses: zaproxy/action-full-scan@v0.12.0
-        with:
-          target: 'http://localhost:8080/WebGoat/login'
-          fail_action: false
+        run: |
+          docker pull ghcr.io/zaproxy/zaproxy:stable
+          docker pull zaproxy/zap-stable
+          # test the mock site https://www.example.com
+          docker run -v $(pwd):/zap/wrk/:rw -t ghcr.io/zaproxy/zaproxy:stable zap-full-scan.py -t https://www.example.com  -J report_json.json
+          # create summary json
+          cat report_json.json | jq -r '.site[].alerts[].riskcode'   | sort | uniq -c | awk '{print "{\"riskcode\":\"" $2 "\", \"count\":" $1 "},"}' | sed '$ s/,$//' | awk 'BEGIN {print "["} {print} END {print "]"}' > report_summary.json
+          # create full report predicate  
+          jq -s '{summary: .[0], details: .[1]}' report_summary.json report_json.json  > summary.json
+          echo "-----------Summary of ZAP scan-----------"
+          cat summary.json
 
-
+      - name: Evidence on docker
+        run: |  
+         jf evd create \
+          --package-name ${{ env.IMAGE_NAME }} \
+          --package-version "${{ env.IMAGE_TAG }}" \
+          --package-repo-name ${{ env.DOCKER_REPO }} \
+          --key "${{ secrets.JIRA_TEST_PKEY }}" \
+          --key-alias ${{ vars.JIRA_TEST_KEY }} \
+          --predicate ./summary.json \
+          --predicate-type https://jfrog.com/evidence/zap-scan/v1
