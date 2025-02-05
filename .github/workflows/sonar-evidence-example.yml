@@ -35,10 +35,10 @@ jobs:
         run: |          
           curl -sL  -sSLo sonar-scanner.zip  https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-6.2.1.4610.zip
           unzip sonar-scanner.zip
-          export PATH=$PATH:$PWD/sonar-scanner-4.6.2.2472-linux/bin
+          export PATH=$PATH:$PWD/sonar-scanner-6.2.1.4610/bin
           pwd
-          ls -l $PWD/sonar-scanner-4.6.2.2472-linux/bin/
-          echo "$PWD/sonar-scanner-4.6.2.2472-linux/bin"
+          ls -l $PWD/sonar-scanner-6.2.1.4610/bin/
+          echo "$PWD/sonar-scanner-6.2.1.4610/bin"
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -54,7 +54,7 @@ jobs:
           echo "JAVA_HOME=$JAVA_HOME"
           cat /home/runner/work/Evidence-Examples/Evidence-Examples/sonar-project.properties
           echo "---------------------"
-          cat /home/runner/work/Evidence-Examples/Evidence-Examples/sonar-scanner-4.6.2.2472-linux/conf/sonar-scanner.properties
+          cat /home/runner/work/Evidence-Examples/Evidence-Examples/sonar-scanner-6.2.1.4610/conf/sonar-scanner.properties
           echo "Start to scan"
           $PWD/sonar-scanner-4.6.2.2472-linux/bin/sonar-scanner \
             -Dsonar.projectKey=test-evidence \
