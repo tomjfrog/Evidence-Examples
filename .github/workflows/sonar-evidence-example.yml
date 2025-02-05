@@ -55,8 +55,11 @@ jobs:
           cat /home/runner/work/Evidence-Examples/Evidence-Examples/sonar-project.properties
           echo "---------------------"
           cat /home/runner/work/Evidence-Examples/Evidence-Examples/sonar-scanner-6.2.1.4610/conf/sonar-scanner.properties
+          pwd
+          ls -l $PWD/sonar-scanner-6.2.1.4610/bin/
+          
           echo "Start to scan"
-          $PWD/sonar-scanner-4.6.2.2472-linux/bin/sonar-scanner \
+          $PWD/sonar-scanner-6.2.1.4610/bin/sonar-scanner \
             -Dsonar.projectKey=test-evidence \
             -Dsonar.organization=my-evidence-test-org \
             -Dsonar.host.url=https://sonarcloud.io \
