@@ -19,7 +19,6 @@ jobs:
     env:
       DOCKER_REPO: 'test-docker-local'
       IMAGE_NAME: 'my-very-cool-image:${{ github.run_number }}'
-      BUILD_NAME: 'sonar-evidence-example'
     steps:
       - name: Display workflow and job names
         run: |
@@ -89,7 +88,7 @@ jobs:
       - name: add docker package to build
         run: |
           echo "${{ vars.JF_URL }}/${{ env.DOCKER_REPO }}/${{ env.IMAGE_NAME }}@${{ steps.docker-build.outputs.digest }}" > metadata.json
-          jf rt build-docker-create ${{ env.DOCKER_REPO }} --image-file metadata.json --build-name ${{ env.BUILD_NAME }} --build-number ${{ github.run_number }}
+          jf rt build-docker-create ${{ env.DOCKER_REPO }} --image-file metadata.json --build-name $GITHUB_JOB --build-number ${{ github.run_number }}
 
       - name: Publish build info
         if: ${{ true }}
@@ -103,7 +102,7 @@ jobs:
         run: |
           # Attach evidence onto build using JFrog CLI                
           jf evd create \
-            --build-name "${{ env.BUILD_NAME }}" \
+            --build-name $GITHUB_WORKFLOW \
             --build-number "${{ github.run_number }}" \
             --predicate ./predicate.json \
             --predicate-type https://jfrog.com/evidence/sonar-scan/v1 \
