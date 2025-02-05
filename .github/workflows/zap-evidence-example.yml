@@ -37,16 +37,13 @@ jobs:
 
       - uses: actions/checkout@v4
 
-      - name: start webgoat
-        run: |
-          docker run -d -p 127.0.0.1:8080:8080 -p 127.0.0.1:9090:9090 -e TZ=Europe/Amsterdam webgoat/webgoat
-
       - name: ZAP Scan
         run: |
           docker pull ghcr.io/zaproxy/zaproxy:stable
           docker pull zaproxy/zap-stable
-          # test the mock site https://www.example.com
+          # zap test the mock site https://www.example.com
           docker run -v $(pwd):/zap/wrk/:rw -t ghcr.io/zaproxy/zaproxy:stable zap-full-scan.py -t https://www.example.com  -J report_json.json
+          echo "Zap completed"
           # create summary json
           cat report_json.json | jq -r '.site[].alerts[].riskcode'   | sort | uniq -c | awk '{print "{\"riskcode\":\"" $2 "\", \"count\":" $1 "},"}' | sed '$ s/,$//' | awk 'BEGIN {print "["} {print} END {print "]"}' > report_summary.json
           # create full report predicate  
