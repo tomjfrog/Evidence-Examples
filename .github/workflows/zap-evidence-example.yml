@@ -38,7 +38,7 @@ jobs:
           docker pull ghcr.io/zaproxy/zaproxy:stable
           # zap test the mock site https://www.example.com
           docker run -v /tmp:/zap/wrk/:rw  -t ghcr.io/zaproxy/zaproxy:stable zap-full-scan.py -t https://www.example.com  -J report_json.json || true
-          echo "Zap completed"
+          echo "Zap completed!"
           ls -ltr /tmp
           # create summary json
           cat /tmp/report_json.json | jq -r '.site[].alerts[].riskcode'   | sort | uniq -c | awk '{print "{\"riskcode\":\"" $2 "\", \"count\":" $1 "},"}' | sed '$ s/,$//' | awk 'BEGIN {print "["} {print} END {print "]"}' > report_summary.json
