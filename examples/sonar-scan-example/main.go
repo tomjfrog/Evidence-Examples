@@ -265,8 +265,9 @@ func getReport(ctx context.Context , client *http.Client, ceTaskUrl string, sona
 }
 
 func getAnalysis(ctx context.Context, client *http.Client, sonar_token string, analysisId string) (SonarAnalysis, error) {
+
     analysisUrl := strings.Replace(ANALYSIS_URL, "$analysisId", analysisId, 1)
-    fmt.Println("analysisId", analysisId)
+    //fmt.Println("analysisId", analysisId)
     //fmt.Println("analysisUrl", analysisUrl)
 	 // Make the HTTP GET request
 	req, err := http.NewRequestWithContext(ctx, "GET", analysisUrl , nil)
