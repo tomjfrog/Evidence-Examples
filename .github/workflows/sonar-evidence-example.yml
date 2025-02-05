@@ -19,8 +19,13 @@ jobs:
     env:
       DOCKER_REPO: 'test-docker-local'
       IMAGE_NAME: 'my-very-cool-image:${{ github.run_number }}'
-      BUILD_NAME: 'jira-evidence-example'
+      BUILD_NAME: 'sonar-evidence-example'
     steps:
+      - name: Display workflow and job names
+        run: |
+          echo "Workflow name: $GITHUB_WORKFLOW"
+          echo "Job name: $GITHUB_JOB"
+
       - name: Install jfrog cli
         id:   setup-cli
         uses: jfrog/setup-jfrog-cli@v4
