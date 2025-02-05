@@ -68,7 +68,7 @@ jobs:
             -Dsonar.token=$SONAR_TOKEN -X
       - name: Create SonarQube evidence
         env:
-          sonar_token: ${{ secrets.SONAR_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           pwd
           ls -ltr  .scannerwork/

@@ -147,7 +147,7 @@ const (
 func main() {
     ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-    sonar_token := os.Getenv("sonar_token")
+    sonar_token := os.Getenv("SONAR_TOKEN")
     if sonar_token == "" {
         fmt.Println("Sonar token not found, set sonar_token variable")
         os.Exit(1)
@@ -214,7 +214,7 @@ func main() {
     // get the analysis content
     analysis , err := getAnalysis(ctx, client, sonar_token, taskResponse.Task.AnalysisId)
     if err != nil {
-        fmt.Println("Error getting sonar analysis report", err)
+        fmt.Println("Error getting sonar analysis report: ", err)
         os.Exit(1)
     }
 
@@ -266,7 +266,8 @@ func getReport(ctx context.Context , client *http.Client, ceTaskUrl string, sona
 
 func getAnalysis(ctx context.Context, client *http.Client, sonar_token string, analysisId string) (SonarAnalysis, error) {
     analysisUrl := strings.Replace(ANALYSIS_URL, "$analysisId", analysisId, 1)
-    //fmt.Println("analysisUrl", analysisUrl)
+    fmt.Println("analysisId", analysisId)
+    fmt.Println("analysisUrl", analysisUrl)
 	 // Make the HTTP GET request
 	req, err := http.NewRequestWithContext(ctx, "GET", analysisUrl , nil)
 	req.Header.Set("Authorization", "Bearer " + sonar_token)
