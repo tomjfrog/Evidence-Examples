@@ -19,7 +19,7 @@ jobs:
     env:
       DOCKER_REPO: 'test-docker-local'
       IMAGE_NAME: 'my-very-cool-image'
-      IMAGE_TAG: '40''
+      IMAGE_TAG: '40'
       BUILD_NAME: 'zap-evidence-example'
     steps:
       - name: Display workflow and job names
