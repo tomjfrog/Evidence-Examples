@@ -105,6 +105,9 @@ jobs:
         run: |
           pwd
           ls -ltr 
+          ls -ltr ./examples/
+          ls -ltr ./examples/sonar-scan-example/
+          ls -ltr ./examples/sonar-scan-example/bin/
           
           ./examples/sonar-scan-example/bin/sonar-scan-extractor-linux-amd64  > predicate.json               
           # Attach evidence onto build using JFrog CLI                
