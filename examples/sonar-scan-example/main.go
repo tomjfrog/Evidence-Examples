@@ -5,6 +5,7 @@ import (
     "os"
     "fmt"
     "io"
+    "log"
 	"net/http"
 	"time"
     "bufio"
@@ -13,79 +14,6 @@ import (
   /*
     SonarScanResponse is the json analysis that was outputed by sonar
     and will be returned to the calling build process for cresting an evidence
-    its structure should be:
-{
- "task": {
-    "status":"SUCCESS",
-    "analysisId":"AZTQ2v-AB5ENJWDkXsh4",
-    "componentId":"AXTQ2v-AB5ENJWDkXsh4",
-    "componentKey":"AXTQ2v-AB5ENJWDkXsh4",
-    "componentName":"AXTQ2v-AB5ENJWDkXsh4",
-    "organization":"default-organization"
- },
- {
-  "projectStatus": {
-    "status": "OK",
-    "conditions": [
-      {
-        "status": "OK",
-        "metricKey": "new_reliability_rating",
-        "comparator": "GT",
-        "periodIndex": 1,
-        "errorThreshold": "1",
-        "actualValue": "1"
-      },
-      {
-        "status": "OK",
-        "metricKey": "new_security_rating",
-        "comparator": "GT",
-        "periodIndex": 1,
-        "errorThreshold": "1",
-        "actualValue": "1"
-      },
-      {
-        "status": "OK",
-        "metricKey": "new_maintainability_rating",
-        "comparator": "GT",
-        "periodIndex": 1,
-        "errorThreshold": "1",
-        "actualValue": "1"
-      },
-      {
-        "status": "OK",
-        "metricKey": "new_coverage",
-        "comparator": "LT",
-        "periodIndex": 1,
-        "errorThreshold": "80",
-        "actualValue": "0.0"
-      },
-      {
-        "status": "OK",
-        "metricKey": "new_duplicated_lines_density",
-        "comparator": "GT",
-        "periodIndex": 1,
-        "errorThreshold": "3",
-        "actualValue": "0.0"
-      },
-      {
-        "status": "OK",
-        "metricKey": "new_security_hotspots_reviewed",
-        "comparator": "LT",
-        "periodIndex": 1,
-        "errorThreshold": "100",
-        "actualValue": "100.0"
-      }
-    ],
-    "periods": [
-      {
-        "index": 1,
-        "mode": "previous_version",
-        "date": "2025-02-04T12:47:08+0100"
-      }
-    ],
-    "ignoredConditions": true
-  }
-}
 
    notice that the calling client should first check that return value was 0 before using the response JSON,
    otherwise the response is an error message which cannot be parsed
@@ -143,13 +71,22 @@ type SonarAnalysis struct {
 const (
 	DEFAULT_HTTP_TIMEOUT = 10 * time.Second
 	ANALYSIS_URL = "https://sonarcloud.io/api/qualitygates/project_status?analysisId=$analysisId"
+    LOG_FILE_LOCATION = "sonar-scan.log"
 )
 func main() {
     ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+
+	logFile, err := os.OpenFile(LOG_FILE_LOCATION, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer logFile.Close()
+	logger := log.New(logFile, "[SONAR EVIDENCE CREATION] ", log.Ldate|log.Ltime|log.Lshortfile)
+    logger.Println("Running sonar analysis extraction")
     sonar_token := os.Getenv("SONAR_TOKEN")
     if sonar_token == "" {
-        fmt.Println("Sonar token not found, set sonar_token variable")
+        logger.Println("Sonar token not found, set SONAR_TOKEN variable")
         os.Exit(1)
     }
 ///home/runner/work/Evidence-Examples/Evidence-Examples/.scannerwork/report-task.txt
@@ -162,7 +99,7 @@ func main() {
     // Open the reportTaskFile
 	file, err := os.Open(reportTaskFile)
 	if err != nil {
-		fmt.Println("Error opening file:", err)
+		logger.Println("Error opening file:", err)
 		return
 	}
 	defer file.Close()
@@ -188,7 +125,7 @@ func main() {
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		fmt.Println("Error reading file:", reportTaskFile , "error", err)
+		logger.Println("Error reading file:", reportTaskFile , "error", err)
         os.Exit(1)
 	}
 	if ceTaskUrl == "" {
@@ -204,17 +141,17 @@ func main() {
 			DisableCompression: true,
 		},
 	}
-	//fmt.Println("ceTaskUrl", ceTaskUrl)
+	//logger.Println("ceTaskUrl", ceTaskUrl)
     taskResponse, err := getReport(ctx, client, ceTaskUrl, sonar_token )
     if err != nil {
-        fmt.Println("Error getting sonar report task", err)
+        logger.Println("Error getting sonar report task", err)
         os.Exit(1)
     }
 
     // get the analysis content
-    analysis , err := getAnalysis(ctx, client, sonar_token, taskResponse.Task.AnalysisId)
+    analysis , err := getAnalysis(ctx, client, logger, sonar_token, taskResponse.Task.AnalysisId)
     if err != nil {
-        fmt.Println("Error getting sonar analysis report: ", err)
+        logger.Println("Error getting sonar analysis report: ", err)
         os.Exit(1)
     }
 
@@ -226,12 +163,11 @@ func main() {
     // marshal the response to JSON
 	jsonBytes, err := json.Marshal(response)
 	if err != nil {
-		fmt.Println("Error marshaling JSON", err)
+		logger.Println("Error marshaling JSON", err)
 		os.Exit(1)
 	}
 	// return response to caller through stdout
 	os.Stdout.Write(jsonBytes)
-	os.Exit(0)
  }
 
 
@@ -264,11 +200,11 @@ func getReport(ctx context.Context , client *http.Client, ceTaskUrl string, sona
 	return *taskResponse, nil
 }
 
-func getAnalysis(ctx context.Context, client *http.Client, sonar_token string, analysisId string) (SonarAnalysis, error) {
+func getAnalysis(ctx context.Context, client *http.Client, logger *log.Logger, sonar_token string, analysisId string) (SonarAnalysis, error) {
 
     analysisUrl := strings.Replace(ANALYSIS_URL, "$analysisId", analysisId, 1)
-    //fmt.Println("analysisId", analysisId)
-    //fmt.Println("analysisUrl", analysisUrl)
+    logger.Println("analysisId", analysisId)
+    //logger.Println("analysisUrl", analysisUrl)
 	 // Make the HTTP GET request
 	req, err := http.NewRequestWithContext(ctx, "GET", analysisUrl , nil)
 	req.Header.Set("Authorization", "Bearer " + sonar_token)
