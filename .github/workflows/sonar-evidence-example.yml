@@ -33,7 +33,7 @@ jobs:
 
       - name: Install SonarQube Scanner
         run: |          
-          # curl -sL  -sSLo sonar-scanner.zip  https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-6.2.1.4610.zip
+          curl -sL  -sSLo sonar-scanner.zip  https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-6.2.1.4610.zip
           unzip sonar-scanner.zip
           export PATH=$PATH:$PWD/sonar-scanner-4.6.2.2472-linux/bin
           pwd
