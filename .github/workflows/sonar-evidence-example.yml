@@ -61,37 +61,10 @@ jobs:
             -Dsonar.java.jdkHome=$JAVA_HOME \
             -Dsonar.verbose=true \
             -Dsonar.token=$SONAR_TOKEN -X
-
-      - name: Create SonarQube evidence
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: |
-          pwd
-          ls -ltr  .scannerwork/
-          echo "---------------------"
-          cat .scannerwork/report-task.txt
-          echo "---------------------"
-          set +e                # Allow the script to continue on error
+          # create evidence from sonar-scan analysis
           ./examples/sonar-scan-example/bin/sonar-scan-extractor-linux-amd64  $PWD/.scannerwork/report-task.txt > predicate.json
-          exit_code=$?         # Capture the exit code
 
-          # Check the exit code
-          if [ $exit_code -ne 0 ]; then
-            echo "Your script failed with exit code: $exit_code"
-            echo "----------sonar-scan.log -----------"
-            cat sonar-scan.log 
-            echo "----------predicate-----------"
-            cat predicate.json
-            echo "----------predicate end-----------"
-          else
-            echo "Your script completed successfully."
-            echo "----------sonar-scan.log -----------"
-            cat sonar-scan.log 
-            echo "----------predicate-----------"
-            cat predicate.json
-            echo "----------predicate end-----------"
-          fi
-          echo "predicate created"
+    
 
       - name: Log in to Artifactory Docker Registry
         uses: docker/login-action@v3
