@@ -40,7 +40,6 @@ jobs:
       - name: ZAP Scan
         run: |
           docker pull ghcr.io/zaproxy/zaproxy:stable
-          docker pull zaproxy/zap-stable
           # zap test the mock site https://www.example.com
           docker run -v $(pwd):/zap/wrk/:rw -t ghcr.io/zaproxy/zaproxy:stable zap-full-scan.py -t https://www.example.com  -J report_json.json
           echo "Zap completed"
