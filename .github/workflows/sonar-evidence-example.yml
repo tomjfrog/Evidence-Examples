@@ -72,10 +72,13 @@ jobs:
         run: |
           pwd
           ls -ltr  .scannerwork/
+          echo "---------------------"
           cat .scannerwork/report-task.txt
-          ls -ltr ./examples/sonar-scan-example/bin/sonar-scan-extractor-linux-amd64
+          echo "---------------------"
+          cat .scannerwork/scanner-report
+          echo "---------------------"
           
-          ./examples/sonar-scan-example/bin/sonar-scan-extractor-linux-amd64  .scannerwork/report-task.txt
+          ./examples/sonar-scan-example/bin/sonar-scan-extractor-linux-amd64  $PWD/.scannerwork/report-task.txt
           # Attach evidence onto build using JFrog CLI                
           #jf evd create \
           #  --build-name "${{ env.BUILD_NAME }}" \

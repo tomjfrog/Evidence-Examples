@@ -145,7 +145,6 @@ const (
 	ANALYSIS_URL = "https://sonarcloud.io/api/qualitygates/project_status?analysisId=$analysisId"
 )
 func main() {
-    fmt.Println("Sonar evidence example started")
     ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
     sonar_token := os.Getenv("sonar_token")
@@ -159,7 +158,7 @@ func main() {
     if len(os.Args) > 0 {
         reportTaskFile = os.Args[1]
      }
-     fmt.Println("reportTaskFile: ", reportTaskFile)
+    // fmt.Println("reportTaskFile: ", reportTaskFile)
     // Open the reportTaskFile
 	file, err := os.Open(reportTaskFile)
 	if err != nil {
@@ -214,6 +213,10 @@ func main() {
 
     // get the analysis content
     analysis , err := getAnalysis(ctx, client, sonar_token, taskResponse.Task.AnalysisId)
+    if err != nil {
+        fmt.Println("Error getting sonar analysis report", err)
+        os.Exit(1)
+    }
 
     response := SonarResponse{
         Task: taskResponse.Task,
