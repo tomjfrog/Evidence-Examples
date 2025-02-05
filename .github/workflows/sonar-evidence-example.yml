@@ -75,7 +75,7 @@ jobs:
           echo "---------------------"
           cat .scannerwork/report-task.txt
           echo "---------------------"
-          cat .scannerwork/scanner-report
+          ls -ltr .scannerwork/scanner-report
           echo "---------------------"
           
           ./examples/sonar-scan-example/bin/sonar-scan-extractor-linux-amd64  $PWD/.scannerwork/report-task.txt
