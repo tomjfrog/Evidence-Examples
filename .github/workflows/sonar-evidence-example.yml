@@ -49,16 +49,6 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
-          echo "java version" 
-          java -version
-          echo "JAVA_HOME=$JAVA_HOME"
-          cat /home/runner/work/Evidence-Examples/Evidence-Examples/sonar-project.properties
-          echo "---------------------"
-          cat /home/runner/work/Evidence-Examples/Evidence-Examples/sonar-scanner-6.2.1.4610/conf/sonar-scanner.properties
-          pwd
-          ls -l $PWD/sonar-scanner-6.2.1.4610/bin/
-          
-          echo "Start to scan"
           $PWD/sonar-scanner-6.2.1.4610/bin/sonar-scanner \
             -Dsonar.projectKey=test-evidence \
             -Dsonar.organization=my-evidence-test-org \
@@ -66,6 +56,7 @@ jobs:
             -Dsonar.java.jdkHome=$JAVA_HOME \
             -Dsonar.verbose=true \
             -Dsonar.token=$SONAR_TOKEN -X
+
       - name: Create SonarQube evidence
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -74,8 +65,6 @@ jobs:
           ls -ltr  .scannerwork/
           echo "---------------------"
           cat .scannerwork/report-task.txt
-          echo "---------------------"
-          ls -ltr .scannerwork/scanner-report
           echo "---------------------"
           
           ./examples/sonar-scan-example/bin/sonar-scan-extractor-linux-amd64  $PWD/.scannerwork/report-task.txt
