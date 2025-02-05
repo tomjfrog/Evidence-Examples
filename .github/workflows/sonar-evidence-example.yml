@@ -76,7 +76,11 @@ jobs:
             cat predicate.json
           else
             echo "Your script completed successfully."
+            echo "----------sonar-scan.log -----------"
+            cat sonar-scan.log 
+            echo "----------predicate-----------"
             cat predicate.json
+          echo "----------predicate end-----------"
           fi
           set -e 
           # Attach evidence onto build using JFrog CLI                
