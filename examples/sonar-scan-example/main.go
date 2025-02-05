@@ -141,12 +141,14 @@ func main() {
 			DisableCompression: true,
 		},
 	}
-	//logger.Println("ceTaskUrl", ceTaskUrl)
-    taskResponse, err := getReport(ctx, client, ceTaskUrl, sonar_token )
+	logger.Println("ceTaskUrl", ceTaskUrl)
+    taskResponse, err := getReport(ctx, client, logger, ceTaskUrl, sonar_token )
     if err != nil {
         logger.Println("Error getting sonar report task", err)
         os.Exit(1)
     }
+	logger.Println("taskResponse.Task.AnalysisId", taskResponse.Task.AnalysisId)
+	logger.Println("taskResponse.Task.id", taskResponse.Task.id)
 
     // get the analysis content
     analysis , err := getAnalysis(ctx, client, logger, sonar_token, taskResponse.Task.AnalysisId)
@@ -171,7 +173,7 @@ func main() {
  }
 
 
-func getReport(ctx context.Context , client *http.Client, ceTaskUrl string, sonar_token string) (SonarTaskResponse, error) {
+func getReport(ctx context.Context , client *http.Client, logger *log.Logger, ceTaskUrl string, sonar_token string) (SonarTaskResponse, error) {
 	 // Make the HTTP GET request
 	req, err := http.NewRequestWithContext(ctx, "GET", ceTaskUrl, nil)
 	req.Header.Set("Authorization", "Bearer " + sonar_token)
@@ -179,9 +181,15 @@ func getReport(ctx context.Context , client *http.Client, ceTaskUrl string, sona
 	if err != nil {
 		return SonarTaskResponse{}, fmt.Errorf("Error making the request, url:",ceTaskUrl, "error", err)
 	}
+	if resp.StatusCode != http.StatusOK {
+		body, err := io.ReadAll(resp.Body)
+		return SonarTaskResponse{}, fmt.Errorf("error getting response from", ceTaskUrl, " returned ", resp.StatusCode, " response body ", body, "error", err)
+	}
+
     defer func(Body io.ReadCloser) {
         err := Body.Close()
         if err != nil {
+        logger.Println("Error reding SonarTaskResponse, error:", err)
             // not printing an error so stdout is not effected
         }
 	}(resp.Body)
