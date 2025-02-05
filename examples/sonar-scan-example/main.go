@@ -145,6 +145,7 @@ const (
 	ANALYSIS_URL = "https://sonarcloud.io/api/qualitygates/project_status?analysisId=$analysisId"
 )
 func main() {
+    fmt.Println("Sonar evidence example started")
     ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
     sonar_token := os.Getenv("sonar_token")
@@ -152,7 +153,7 @@ func main() {
         fmt.Println("Sonar token not found, set sonar_token variable")
         os.Exit(1)
     }
-
+///home/runner/work/Evidence-Examples/Evidence-Examples/.scannerwork/report-task.txt
     //get the sonar report file location or details to .scannerwork/.report-task.txt
     reportTaskFile := ".scannerwork/.report-task.txt"
     if len(os.Args) > 0 {
