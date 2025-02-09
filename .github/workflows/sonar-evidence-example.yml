@@ -49,6 +49,7 @@ jobs:
           distribution: 'temurin' # You can also use 'temurin', 'zulu', etc.
 
       - name: Run SonarScanner
+        id: run-sonar-scanner
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
@@ -63,7 +64,14 @@ jobs:
           ./examples/sonar-scan-example/bin/sonar-scan-extractor-linux-amd64  --reportTaskFile=$PWD/.scannerwork/report-task.txt --FailOnAnalysisFailure > predicate.json || true
           EXIT_CODE=$?
           echo "Sonar scan extractor exist code: $EXIT_CODE"
-          echo "::set-output name=create_sonar_evidence::$EXIT_CODE"
+          echo "Sonar scan report:"
+          cat $PWD/.scannerwork/report-task.txt
+          echo "Sonar scan extractor output:" 
+          cat predicate.json
+          echo "Sonar scan extractor log:" 
+          cat sonar-scan.log
+          
+          echo echo "create-sonar-evidence=$EXIT_CODE" >> $GITHUB_OUTPUT 
           
 
       - name: Log in to Artifactory Docker Registry
@@ -100,7 +108,7 @@ jobs:
         
 
       - name: Create evidence
-        if: ${{ steps.run-sonar-scanner.outputs.exit_code }}
+        if: ${{ steps.run-sonar-scanner.outputs.create-sonar-evidence == 0 }}
         run: |          
           # Attach evidence onto build using JFrog CLI                
           jf evd create \
