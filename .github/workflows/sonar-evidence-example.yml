@@ -59,9 +59,9 @@ jobs:
             -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.java.jdkHome=$JAVA_HOME \
             -Dsonar.verbose=true \
-            -Dsonar.token=$SONAR_TOKEN -X
+            -Dsonar.token=$SONAR_TOKEN
           # create evidence from sonar-scan analysis
-          ./examples/sonar-scan-example/bin/sonar-scan-extractor-linux-amd64  $PWD/.scannerwork/report-task.txt > predicate.json
+          ./examples/sonar-scan-example/bin/sonar-scan-extractor-linux-amd64  --reportTaskFile=$PWD/.scannerwork/report-task.txt --FailOnAnalysisFailure > predicate.json
 
       - name: Log in to Artifactory Docker Registry
         uses: docker/login-action@v3

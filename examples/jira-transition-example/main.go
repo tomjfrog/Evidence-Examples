@@ -16,6 +16,7 @@ import (
     "tasks": [
         {
         "jira_id": "<jira-id>",
+        "summary": "<summary>",
         "transition_found": "<true/false>"
         "author": "<user display name>",
         "author_user_name": "<user email>",
@@ -36,6 +37,7 @@ type TransitionCheckResponse struct {
 
 type JiraTransitionResult struct {
 	JiraId           string `json:"jira_id"`
+	Summary          string `json:"summary"`
 	TransitionFound  bool   `json:"transition_found"`
 	Author           string `json:"author"`
 	AuthorEmail   string `json:"author_user_name"`
@@ -92,6 +94,7 @@ func main() {
          // adding the jira result to the list of results
         jiraTransitionResult := JiraTransitionResult{
             JiraId: jiraId,
+            Summary: issue.Fields.Summary,
         }
 
         if len(issue.Changelog.Histories) > 0 {

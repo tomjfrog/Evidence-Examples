@@ -92,8 +92,21 @@ func main() {
 ///home/runner/work/Evidence-Examples/Evidence-Examples/.scannerwork/report-task.txt
     //get the sonar report file location or details to .scannerwork/.report-task.txt
     reportTaskFile := ".scannerwork/.report-task.txt"
+    failOnAnalysisFailure := false
     if len(os.Args) > 0 {
-        reportTaskFile = os.Args[1]
+        // loop over all args
+        for i, arg := range os.Args {
+            if i == 0 {
+                continue
+            }
+            if strings.HasPrefix(arg, "--reportTaskFile=") {
+                reportTaskFile = strings.TrimPrefix(arg, "--reportTaskFile=")
+            } else if strings.HasPrefix(arg, "--FailOnAnalysisFailure") {
+                failOnAnalysisFailure = true
+            }
+        }
+        logger.Println("reportTaskFile:", reportTaskFile)
+        logger.Println("FailOnAnalysisFailure:", failOnAnalysisFailure)
      }
     // fmt.Println("reportTaskFile: ", reportTaskFile)
     // Open the reportTaskFile
@@ -154,6 +167,10 @@ func main() {
     analysis , err := getAnalysis(ctx, client, logger, sonar_token, taskResponse.Task.AnalysisId)
     if err != nil {
         logger.Println("Error getting sonar analysis report: ", err)
+        os.Exit(1)
+    }
+    if analysis.ProjectStatus.Status != "OK" && failOnAnalysisFailure {
+        logger.Println("Sonar analysis failed, exiting according to failOnAnalysisFailure argument")
         os.Exit(1)
     }
 
