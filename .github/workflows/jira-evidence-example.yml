@@ -67,7 +67,7 @@ jobs:
             jira_url: ${{ secrets.JIRA_URL }}
         run: |
             BRANCH_NAME=$(git branch --show-current)
-            jira_id=$(echo "$branch_name" | sed -E 's/^([^-]+-[0-9]+).*/\1/')
+            jira_id=$(echo "$BRANCH_NAME" | sed -E 's/^([^-]+-[0-9]+).*/\1/')
             echo "The branch name is: $BRANCH_NAME"
             echo "The jira_id is: $jira_id"
             # uncomment the line below to use the commit message instead of the branch name
