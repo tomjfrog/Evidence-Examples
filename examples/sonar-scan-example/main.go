@@ -200,28 +200,26 @@ func getReport(ctx context.Context , client *http.Client, logger *log.Logger, ce
 		return SonarTaskResponse{}, fmt.Errorf("Error making the request, url:",ceTaskUrl, "error", err)
 	}
 
-	defer func(Body io.ReadCloser) {
-        err := Body.Close()
-        if err != nil {
-          logger.Println("Error reading SonarTaskResponse, error:", err)
-            // not printing an error so stdout is not effected
-        }
-	}(resp.Body)
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+    if err != nil {
+        logger.Println("getReport error getting response body error:", err)
+        return SonarTaskResponse{}, fmt.Errorf("getReport error getting response body error, url:",ceTaskUrl, "error", err)
+    }
 
 	if resp.StatusCode != http.StatusOK {
-	    body, err := io.ReadAll(resp.Body)
 		return SonarTaskResponse{}, fmt.Errorf("getReport error getting response from", ceTaskUrl, " returned ", resp.StatusCode, " response body ", body)
 	}
 
     logger.Println("getReport resp.StatusCode:", resp.StatusCode)
 
     var taskResponse SonarTaskResponse
-    err = json.Unmarshal(resp.Body, &taskResponse)
+    err = json.Unmarshal(body, &taskResponse)
     if err != nil {
-		logger.Println("getReport error Unmarshal response body ", string(resp.Body))
+		logger.Println("getReport error Unmarshal response body ", string(body))
 		return SonarTaskResponse{}, fmt.Errorf("error unmarshal report response for report", ceTaskUrl, "error",  err)
 	}
-	logger.Println("getReport taskResponse", taskResponse)
+	logger.Println("getReport taskResponse:", taskResponse)
 	return taskResponse, nil
 }
 
@@ -237,21 +235,19 @@ func getAnalysis(ctx context.Context, client *http.Client, logger *log.Logger, s
 	if err != nil {
 		return SonarAnalysis{}, fmt.Errorf("getAnalysis, Error making the request, url:",analysisUrl, "error", err)
 	}
-   defer func(Body io.ReadCloser) {
-            err := Body.Close()
-            if err != nil {
-              logger.Println("getAnalysis, Error reading SonarTaskResponse, error:", err)
-               // not printing an error so stdout is not effected
-            }
-    }(resp.Body)
+    defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+        logger.Println("getAnalysis error getting response body error:", err)
+        return SonarAnalysis{}, fmt.Errorf("getAnalysis error getting response body error, url:",analysisUrl, "error", err)
+    }
 
 	if resp.StatusCode != http.StatusOK {
-	    body, err := io.ReadAll(resp.Body)
 		return SonarAnalysis{}, fmt.Errorf("getAnalysis, error getting response from", analysisUrl, " returned ", resp.StatusCode, " response body ", body)
 	}
 
     var analysisResponse  SonarAnalysis
-    err = json.Unmarshal(resp.Body, &analysisResponse)
+    err = json.Unmarshal(body, &analysisResponse)
     if err != nil {
 		log.Println("getAnalysis, get temp credentials response body ", string(body))
 		return SonarAnalysis{}, fmt.Errorf("getAnalysis, error unmarshal analysis response", analysisUrl, "error",  err)
