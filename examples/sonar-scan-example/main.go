@@ -159,9 +159,9 @@ func main() {
 	max_retries := 3
 	num_retries := 0
 	wait_time := 5
-
-	while(num_retries < max_retries){
-        taskResponse, err := getReport(ctx, client, logger, ceTaskUrl, sonar_token )
+    var taskResponse SonarTaskResponse
+	for num_retries < max_retries {
+        taskResponse, err = getReport(ctx, client, logger, ceTaskUrl, sonar_token )
         if err != nil {
             logger.Println("Error getting sonar report task", err)
             os.Exit(1)
