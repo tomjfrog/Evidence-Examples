@@ -77,16 +77,23 @@ jobs:
             # Check if the jira_id matches the JIRA ID format
             if [[ $jira_id =~ ^[A-Z]+-[0-9]+$ ]]; then
                 echo "The second element is a valid JIRA ID: $jira_id"
-                ./examples/jira-transition-example/bin/jira-transition-checker-linux-amd64 "Done" $jira_id > predicate.json               
-                # Attach evidence onto build using JFrog CLI                
-                jf evd create \
+                set +e
+                ./examples/jira-transition-example/bin/jira-transition-checker-linux-amd64 "Done" $jira_id > predicate.json
+                EXIT_CODE=$?
+                set -e
+                # create evidence only if the jira transition checker was successful
+                if [ $EXIT_CODE -eq 0 ]; then
+                  # Attach evidence onto build using JFrog CLI                
+                  jf evd create \
                   --build-name $GITHUB_WORKFLOW \
                   --build-number "${{ github.run_number }}" \
                   --predicate ./predicate.json \
                   --predicate-type https://jfrog.com/evidence/build-jira-transition/v1 \
                   --key "${{ secrets.JIRA_TEST_PKEY }}" \
-                  --key-alias ${{ vars.JIRA_TEST_KEY }}
-                
+                  --key-alias ${{ vars.JIRA_TEST_KEY }}    
+                else
+                  echo "JIRA transition checked completed with an error, or not all JIRAs pass the transition checked"
+                fi
             else
                 echo "The second element is not a valid JIRA ID"
             fi

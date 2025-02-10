@@ -47,10 +47,25 @@ type JiraTransitionResult struct {
 func main() {
     // get checked transition name and JIRA IDs from command-line arguments
 	if len(os.Args) < 3 {
-        fmt.Println("No command-line arguments provided, please send checked transition name and at least one JIRA ID(s)")
+        fmt.Println("Insufficient command-line arguments provided, please send checked transition name and at least one JIRA ID(s)")
         return
     }
-    transitionChecked := os.Args[1]
+    transitionArgPosition := 1
+    jiraArgPosition := 2
+    failOnMissingTransition := false
+    for i, arg := range os.Args {
+        if i == 0 {
+            continue
+        }
+        if strings.HasPrefix(arg, "--failOnMissingTransition") {
+                failOnMissingTransition = true
+                transitionArgPosition ++
+                jiraArgPosition ++
+        }
+    }
+
+
+    transitionChecked := os.Args[transitionArgPosition]
     // Create a new Jira client
     jira_token := os.Getenv("jira_token")
     if jira_token == "" {
@@ -83,7 +98,7 @@ func main() {
     transitionCheckResponse.Transition = transitionChecked
     transitionFound := false
     // loop over all JIRAs sent to the fucntion
-    for _, jiraId := range os.Args[2:] {
+    for _, jiraId := range os.Args[jiraArgPosition:] {
         //fmt.Println("-----------Checking JIRA ", jiraId)
         transitionFound = false
         issue, _, _ := client.Issue.Get(context.Background(), jiraId , &jira.GetQueryOptions{Expand: "changelog"})
@@ -122,6 +137,10 @@ func main() {
         if !transitionFound {
             transitionCheckResponse.AllJiraTransitionsFound = false
         }
+    }
+    if failOnMissingTransition && !transitionCheckResponse.AllJiraTransitionsFound {
+        fmt.Println("Not all JIRA transitions found")
+        os.Exit(1)
     }
     // marshal the response to JSON
 	jsonBytes, err := json.Marshal(transitionCheckResponse)

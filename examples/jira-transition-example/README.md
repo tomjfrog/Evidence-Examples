@@ -15,7 +15,8 @@ The example is based on the following steps:
 2. extract the JIRA IDs from all the build commits
 3. call the jira-transition-checker utility (use the binary for your build platform) with these arguments: "transition name" JIRA-ID [,JIRA-ID]
 for example:
- ``./examples/jira-transition-example/bin/jira-transition-checker-linux-amd64 "Finance Approval" JIRA-486 > predicate.json``               
+ ``./examples/jira-transition-example/bin/jira-transition-checker-linux-amd64 "Finance Approval" JIRA-486 PROJ-111 > predicate.json``
+optional arg: `--failOnMissingTransition` whihc will fail the script if any of the JIRA IDs sent did not pass the transition check 
 4. call the evidence create cli with the predicate.json file
 for example:
 ``jf evd create \
