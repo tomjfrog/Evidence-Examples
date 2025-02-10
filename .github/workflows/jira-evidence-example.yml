@@ -67,10 +67,12 @@ jobs:
             jira_url: ${{ secrets.JIRA_URL }}
         run: |
             BRANCH_NAME=$(git branch --show-current)
+            jira_id=$(echo "$BRANCH_NAME" | cut -d'/' -f1)
             echo "The branch name is: $BRANCH_NAME"
             # uncomment the line below to use the commit message instead of the branch name
             #START_COMMIT=$(git log -1 --format="%H %s")
-            jira_id=$(echo "$BRANCH_NAME" | cut -d' ' -f2)
+            #jira_id=$(echo "$BRANCH_NAME" | cut -d' ' -f2)
+          
             # Check if the jira_id matches the JIRA ID format
             if [[ $jira_id =~ ^[A-Z]+-[0-9]+$ ]]; then
                 echo "The second element is a valid JIRA ID: $jira_id"
