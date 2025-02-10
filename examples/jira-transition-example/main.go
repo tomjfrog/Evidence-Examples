@@ -59,8 +59,8 @@ func main() {
         }
         if strings.HasPrefix(arg, "--failOnMissingTransition") {
                 failOnMissingTransition = true
-                transitionArgPosition ++
-                jiraArgPosition ++
+                // removing the argument from the list
+                os.Args = append(os.Args[:indexToRemove], os.Args[indexToRemove+1:]...)
         }
     }
 
