@@ -78,7 +78,8 @@ jobs:
             if [[ $jira_id =~ ^[A-Z]+-[0-9]+$ ]]; then
                 echo "A valid JIRA ID was found in branch name: $jira_id"
                 set +e
-                ./examples/jira-transition-example/bin/jira-transition-checker-linux-amd64 --failOnMissingTransition "Done" $jira_id > predicate.json
+                ./examples/jira-transition-example/bin/jira-transition-checker-linux-amd64 "Done" $jira_id > predicate.json
+                # add --failOnMissingTransition to fail the build if the JIRA does not pass the transition check
                 EXIT_CODE=$?
                 set -e
                 # create evidence only if the jira transition checker was successful
