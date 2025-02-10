@@ -10,6 +10,7 @@ import (
 	"time"
     "bufio"
     "strings"
+    "strconv"
   )
   /*
     SonarScanResponse is the json analysis that was outputed by sonar
@@ -93,6 +94,8 @@ func main() {
     //get the sonar report file location or details to .scannerwork/.report-task.txt
     reportTaskFile := ".scannerwork/.report-task.txt"
     failOnAnalysisFailure := false
+    maxRetries := 0
+    waitTime := 5
     if len(os.Args) > 0 {
         // loop over all args
         for i, arg := range os.Args {
@@ -103,17 +106,33 @@ func main() {
                 reportTaskFile = strings.TrimPrefix(arg, "--reportTaskFile=")
             } else if strings.HasPrefix(arg, "--FailOnAnalysisFailure") {
                 failOnAnalysisFailure = true
+            } else if strings.HasPrefix(arg, "--MaxRetries=") {
+                maxRetriesStr := strings.TrimPrefix(arg, "--MaxRetries=")
+                maxRetries, err = strconv.Atoi(maxRetriesStr)
+                if err != nil {
+                    logger.Println("Invalid wait time argument:",maxRetriesStr , "error:" ,err)
+                    os.Exit(1)
+                }
+            } else if strings.HasPrefix(arg, "--WaitTime=") {
+                waitTimeStr := strings.TrimPrefix(arg, "--WaitTime=")
+                waitTime, err = strconv.Atoi(waitTimeStr)
+                if err != nil {
+                    logger.Println("Invalid wait time argument:",waitTimeStr , "error:" ,err)
+                    os.Exit(1)
+                }
             }
         }
         logger.Println("reportTaskFile:", reportTaskFile)
         logger.Println("FailOnAnalysisFailure:", failOnAnalysisFailure)
+        logger.Println("maxRetries:", maxRetries)
+        logger.Println("WaitTime:", waitTime)
      }
     // fmt.Println("reportTaskFile: ", reportTaskFile)
     // Open the reportTaskFile
 	file, err := os.Open(reportTaskFile)
 	if err != nil {
-		logger.Println("Error opening file:", err)
-		return
+		logger.Println("Error opening file:", reportTaskFile, "error:", err)
+		os.Exit(1)
 	}
 	defer file.Close()
 	ceTaskUrl:=""
@@ -156,28 +175,27 @@ func main() {
 	}
 	logger.Println("ceTaskUrl", ceTaskUrl)
 	// get the report task
-	max_retries := 3
-	num_retries := 0
-	wait_time := 5
+	retries := 0
+
     var taskResponse SonarTaskResponse
-	for num_retries < max_retries {
+	for retries < maxRetries {
         taskResponse, err = getReport(ctx, client, logger, ceTaskUrl, sonar_token )
         if err != nil {
             logger.Println("Error getting sonar report task", err)
             os.Exit(1)
         }
         if taskResponse.Task.Status == "SUCCESS" {
-            logger.Println("Sonar analysis task completed successfully after ", num_retries, " retries")
+            logger.Println("Sonar analysis task completed successfully after ", retries, " retries")
             break
         }
         if taskResponse.Task.Status == "PENDING" || taskResponse.Task.Status == "IN_PROGRESS" {
-            logger.Println("Sonar analysis task is still in progress, waiting for ", wait_time, " seconds before retrying")
-            time.Sleep(time.Duration(wait_time) * time.Second)
-            num_retries++
+            logger.Println("Sonar analysis task is still in progress, waiting for ", waitTime, " seconds before retrying")
+            time.Sleep(time.Duration(waitTime) * time.Second)
+            retries++
         }
 	}
     if (taskResponse.Task.Status != "SUCCESS") {
-        logger.Println("Sonar analysis task after ", max_retries, " retries is ", taskResponse.Task.Status, "exiting")
+        logger.Println("Sonar analysis task after ", maxRetries, " retries is ", taskResponse.Task.Status, "exiting")
         os.Exit(1)
     }
 
