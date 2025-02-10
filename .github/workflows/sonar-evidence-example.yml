@@ -61,8 +61,10 @@ jobs:
             -Dsonar.verbose=true \
             -Dsonar.token=$SONAR_TOKEN
           # create evidence from sonar-scan analysis
+          set +e
           ./examples/sonar-scan-example/bin/sonar-scan-extractor-linux-amd64  --reportTaskFile=$PWD/.scannerwork/report-task.txt --FailOnAnalysisFailure > predicate.json
           EXIT_CODE=$?
+          set -e          
           echo "Sonar scan extractor exist code: $EXIT_CODE"
           echo "Sonar scan report:"
           cat $PWD/.scannerwork/report-task.txt
