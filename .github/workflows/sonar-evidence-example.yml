@@ -66,7 +66,12 @@ jobs:
           ./examples/sonar-scan-example/bin/sonar-scan-extractor-linux-amd64  --reportTaskFile=$PWD/.scannerwork/report-task.txt > predicate.json
           EXIT_CODE=$?
           set -e          
-          # write the exit code to the github output so that it can be used in the evidence creation step 
+          # write the exit code to the github output so that it can be used in the evidence creation step
+          echo "------predicate.json------"
+          cat predicate.json
+          echo "------sonar-scan.log------"
+          cat sonar-scan.log
+          echo "------EXIT------"
           echo "create-sonar-evidence=$EXIT_CODE" 
           echo "create-sonar-evidence=$EXIT_CODE" >> $GITHUB_OUTPUT 
       - name: check response
