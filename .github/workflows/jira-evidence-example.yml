@@ -4,10 +4,10 @@ on:
   workflow_dispatch:  # This allows manual triggering of the workflow
   push:
     branches:
-      - carmit_examples
+      - CCS-2-Additional_evidence_examples
   pull_request:
       branches:
-        - carmit_examples
+        - CCS-2-Additional_evidence_examples
 permissions:
   id-token: write
   contents: read
@@ -66,13 +66,15 @@ jobs:
             jira_username: ${{ secrets.JIRA_USERNAME }}
             jira_url: ${{ secrets.JIRA_URL }}
         run: |
-            # Get the latest commit that triggered the build
-            START_COMMIT=$(git log -1 --format="%H %s")
-            second_element=$(echo "$START_COMMIT" | cut -d' ' -f2)
-            # Check if the second element matches the JIRA ID format
-            if [[ $second_element =~ ^[A-Z]+-[0-9]+$ ]]; then
-                echo "The second element is a valid JIRA ID: $second_element"
-                ./examples/jira-transition-example/bin/jira-transition-checker-linux-amd64 "Done" $second_element > predicate.json               
+            BRANCH_NAME=git branch --show-current
+            echo "The branch name is: $BRANCH_NAME"
+            # uncomment the line below to use the commit message instead of the branch name
+            #START_COMMIT=$(git log -1 --format="%H %s")
+            jira_id=$(echo "$BRANCH_NAME" | cut -d' ' -f2)
+            # Check if the jira_id matches the JIRA ID format
+            if [[ $jira_id =~ ^[A-Z]+-[0-9]+$ ]]; then
+                echo "The second element is a valid JIRA ID: $jira_id"
+                ./examples/jira-transition-example/bin/jira-transition-checker-linux-amd64 "Done" $jira_id > predicate.json               
                 # Attach evidence onto build using JFrog CLI                
                 jf evd create \
                   --build-name $GITHUB_WORKFLOW \
