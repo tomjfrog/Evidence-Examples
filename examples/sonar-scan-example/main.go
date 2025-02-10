@@ -239,14 +239,7 @@ func getAnalysis(ctx context.Context, client *http.Client, logger *log.Logger, s
 	if err != nil {
 		return SonarAnalysis{}, fmt.Errorf("getAnalysis, Error making the request, url:",analysisUrl, "error", err)
 	}
-   body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return SonarAnalysis{},  fmt.Errorf("getReport error reading body error:",err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return SonarAnalysis{}, fmt.Errorf("getAnalysis, error getting response from", analysisUrl, " returned ", resp.StatusCode, " response body ", body)
-	}
-    defer func(Body io.ReadCloser) {
+   defer func(Body io.ReadCloser) {
             err := Body.Close()
             if err != nil {
               logger.Println("getAnalysis, Error reading SonarTaskResponse, error:", err)
@@ -254,8 +247,13 @@ func getAnalysis(ctx context.Context, client *http.Client, logger *log.Logger, s
             }
     }(resp.Body)
 
+	if resp.StatusCode != http.StatusOK {
+	    body, err := io.ReadAll(resp.Body)
+		return SonarAnalysis{}, fmt.Errorf("getAnalysis, error getting response from", analysisUrl, " returned ", resp.StatusCode, " response body ", body)
+	}
+
     var analysisResponse  SonarAnalysis
-    err = json.Unmarshal(body, &analysisResponse)
+    err = json.Unmarshal(resp.Body, &analysisResponse)
     if err != nil {
 		log.Println("getAnalysis, get temp credentials response body ", string(body))
 		return SonarAnalysis{}, fmt.Errorf("getAnalysis, error unmarshal analysis response", analysisUrl, "error",  err)
