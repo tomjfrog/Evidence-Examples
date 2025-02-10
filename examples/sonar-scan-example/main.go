@@ -199,18 +199,8 @@ func getReport(ctx context.Context , client *http.Client, logger *log.Logger, ce
 	if err != nil {
 		return SonarTaskResponse{}, fmt.Errorf("Error making the request, url:",ceTaskUrl, "error", err)
 	}
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return SonarTaskResponse{},  fmt.Errorf("getReport error reading body error:",err)
-	}
 
-	if resp.StatusCode != http.StatusOK {
-		return SonarTaskResponse{}, fmt.Errorf("getReport error getting response from", ceTaskUrl, " returned ", resp.StatusCode, " response body ", body)
-	}
-
-    logger.Println("getReport resp.StatusCode:", resp.StatusCode)
-
-    defer func(Body io.ReadCloser) {
+	defer func(Body io.ReadCloser) {
         err := Body.Close()
         if err != nil {
           logger.Println("Error reading SonarTaskResponse, error:", err)
@@ -218,12 +208,20 @@ func getReport(ctx context.Context , client *http.Client, logger *log.Logger, ce
         }
 	}(resp.Body)
 
+	if resp.StatusCode != http.StatusOK {
+	    body, err := io.ReadAll(resp.Body)
+		return SonarTaskResponse{}, fmt.Errorf("getReport error getting response from", ceTaskUrl, " returned ", resp.StatusCode, " response body ", body)
+	}
+
+    logger.Println("getReport resp.StatusCode:", resp.StatusCode)
+
     var taskResponse SonarTaskResponse
-    err = json.Unmarshal(body, &taskResponse)
+    err = json.Unmarshal(resp.Body, &taskResponse)
     if err != nil {
-		log.Println("get temp credentials response body ", string(body))
+		logger.Println("getReport error Unmarshal response body ", string(resp.Body))
 		return SonarTaskResponse{}, fmt.Errorf("error unmarshal report response for report", ceTaskUrl, "error",  err)
 	}
+	logger.Println("getReport taskResponse", taskResponse)
 	return taskResponse, nil
 }
 
