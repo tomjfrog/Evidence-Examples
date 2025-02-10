@@ -155,14 +155,33 @@ func main() {
 		},
 	}
 	logger.Println("ceTaskUrl", ceTaskUrl)
-    taskResponse, err := getReport(ctx, client, logger, ceTaskUrl, sonar_token )
-    if err != nil {
-        logger.Println("Error getting sonar report task", err)
+	// get the report task
+	max_retries := 3
+	num_retries := 0
+	wait_time := 5
+
+	while(num_retries < max_retries){
+        taskResponse, err := getReport(ctx, client, logger, ceTaskUrl, sonar_token )
+        if err != nil {
+            logger.Println("Error getting sonar report task", err)
+            os.Exit(1)
+        }
+        if taskResponse.Task.Status == "SUCCESS" {
+            logger.Println("Sonar analysis task completed successfully after ", num_retries, " retries")
+            break
+        }
+        if taskResponse.Task.Status == "PENDING" || taskResponse.Task.Status == "IN_PROGRESS" {
+            logger.Println("Sonar analysis task is still in progress, waiting for ", wait_time, " seconds before retrying")
+            time.Sleep(time.Duration(wait_time) * time.Second)
+            num_retries++
+        }
+	}
+    if (taskResponse.Task.Status != "SUCCESS") {
+        logger.Println("Sonar analysis task after ", max_retries, " retries is ", taskResponse.Task.Status, "exiting")
         os.Exit(1)
     }
-	logger.Println("taskResponse.Task.AnalysisId", taskResponse.Task.AnalysisId)
-	logger.Println("taskResponse.Task.id", taskResponse.Task.id)
 
+	logger.Println("taskResponse.Task.AnalysisId", taskResponse.Task.AnalysisId)
     // get the analysis content
     analysis , err := getAnalysis(ctx, client, logger, sonar_token, taskResponse.Task.AnalysisId)
     if err != nil {
