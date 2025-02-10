@@ -4,10 +4,10 @@ on:
   workflow_dispatch:  # This allows manual triggering of the workflow
   push:
     branches:
-      - carmit_examples
+      - CCS-2-Additional_evidence_examples
   pull_request:
       branches:
-        - carmit_examples
+        - CCS-2-Additional_evidence_examples
 permissions:
   id-token: write
   contents: read
