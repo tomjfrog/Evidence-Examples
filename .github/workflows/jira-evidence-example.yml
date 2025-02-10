@@ -78,7 +78,7 @@ jobs:
             if [[ $jira_id =~ ^[A-Z]+-[0-9]+$ ]]; then
                 echo "The second element is a valid JIRA ID: $jira_id"
                 set +e
-                ./examples/jira-transition-example/bin/jira-transition-checker-linux-amd64 "Done" $jira_id > predicate.json
+                ./examples/jira-transition-example/bin/jira-transition-checker-linux-amd64 --failOnMissingTransition "Done" $jira_id > predicate.json
                 EXIT_CODE=$?
                 set -e
                 # create evidence only if the jira transition checker was successful
