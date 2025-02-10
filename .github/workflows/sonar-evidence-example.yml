@@ -109,7 +109,9 @@ jobs:
 
       - name: Create evidence
         if: ${{ steps.run-sonar-scanner.outputs.create-sonar-evidence == 0 }}
-        run: |          
+        run: |  
+          echo "create-sonar-evidence=${{ steps.run-sonar-scanner.outputs.create-sonar-evidence}}
+          
           # Attach evidence onto build using JFrog CLI                
           jf evd create \
             --build-name $GITHUB_WORKFLOW \
