@@ -103,7 +103,7 @@ jobs:
           jf rt build-publish
 
       - name: Create evidence
-        if: ${{ steps.run-sonar-scanner.outputs.create-sonar-evidence == 0 }}
+        if: ${{ steps.run-sonar-scanner.outputs.create-sonar-evidence == "0" }}
         run: |            
           # Attach evidence onto build using JFrog CLI                
           jf evd create \

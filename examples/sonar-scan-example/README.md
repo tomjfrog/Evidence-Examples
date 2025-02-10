@@ -12,8 +12,9 @@ should be checked using a policy.
 - `SONAR_TOKEN` - The sonar server token.
 
 ## Arguments
---reportTaskFile=<path> - The path to the sonar report task file.
---FailOnAnalysisFailure - Fail with exit code 1 if the sonar analysis failed in sonar quality gate.
+`--reportTaskFile=<path>` - The path to the sonar report task file.
+
+`--FailOnAnalysisFailure` - Fail with exit code 1 if the sonar analysis failed in sonar quality gate.
 
 
 ## The example is based on the following steps:
@@ -44,3 +45,12 @@ jf evd create \
             --key "${{ secrets.JIRA_TEST_PKEY }}" \
             --key-alias ${{ vars.JIRA_TEST_KEY }}
 ``
+
+## Additional considerations
+```plaintext
+It is advised to decide if to create an evidence with sonar analysis failure scan or refrain from creating the evidence.
+to create the evidence with an analysis gateway failure content, do **not** add the `--FailOnAnalysisFailure` argument.
+
+to refrain from creating the evidence with an analysis gateway failure content, add the `--FailOnAnalysisFailure` argument.
+then check the exit code of the script and decide if to create the evidence or not.
+```
