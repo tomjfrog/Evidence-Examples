@@ -71,7 +71,7 @@ jobs:
           echo "Sonar scan extractor log:" 
           cat sonar-scan.log
           
-          echo echo "create-sonar-evidence=$EXIT_CODE" >> $GITHUB_OUTPUT 
+          echo "create-sonar-evidence=$EXIT_CODE" >> $GITHUB_OUTPUT 
           
 
       - name: Log in to Artifactory Docker Registry
