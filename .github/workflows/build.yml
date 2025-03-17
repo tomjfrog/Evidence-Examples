@@ -64,7 +64,7 @@ jobs:
           --platform linux/amd64 \
           --metadata-file=build-metadata \
           --push
-          jfrog rt build-docker-create example-project-docker-dev --image-file build-metadata --build-name ${{ vars.BUILD_NAME }} --build-number ${{ github.run_number }}
+          jf rt build-docker-create ${{ vars.DOCKER_VIRTUAL}} --image-file build-metadata --build-name ${{ vars.BUILD_NAME }} --build-number ${{ github.run_number }}
 
       - name: Evidence on docker
         id: evidence-on-docker
@@ -73,7 +73,7 @@ jobs:
           jf evd create \
           --package-name example-project-image \
           --package-version 65 \
-          --package-repo-name example-project-docker-dev-local \
+          --package-repo-name ${{ vars.DOCKER_VIRTUAL}} \
           --key "${{ secrets.PRIVATE_KEY_NAME }}" \
           --predicate ./sign.json \
           --predicate-type https://jfrog.com/evidence/signature/v1 
