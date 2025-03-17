@@ -47,8 +47,9 @@ jobs:
       - name: Setup Signing Key
         id: setup-signing-key
         run: |
-          echo "${{ secrets.PRIVATE_KEY_NAME_EXPORT }}" > "${{ secrets.PRIVATE_KEY_NAME }}"
+          echo "${{ secrets.PRIVATE_KEY_EXPORT }}" > "${{ secrets.PRIVATE_KEY_NAME }}"
           chmod 600 ${{ secrets.PRIVATE_KEY_NAME }}
+          openssl rsa -in private.pem -check
 
       - name: Build Docker image
         id: build-docker-image
