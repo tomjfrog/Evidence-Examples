@@ -80,19 +80,23 @@ jobs:
           --predicate-type https://jfrog.com/evidence/signature/v1 
           echo '🔎 Evidence attached: `signature` 🔏 ' 
 
-      - name: Upload readme file
+      - name: Upload Readme File
         id: upload-readme
         run: |
-          jf rt upload ./README.md example-project-generic-dev/readme/${{ github.run_number }}/ --build-name ${{ vars.BUILD_NAME }} --build-number ${{ github.run_number }}
-          jf evd create --subject-repo-path example-project-generic-dev/readme/${{ github.run_number }}/README.md \
-            --key "${{ secrets.PRIVATE_KEY_NAME }}" \
-            --predicate ./sign.json --predicate-type https://jfrog.com/evidence/signature/v1
+          jf rt upload ./README.md evdemo-generic-local/readme/${{ github.run_number }}/ \
+          --build-name ${{ vars.BUILD_NAME }} \
+          --build-number ${{ github.run_number }}
+          jf evd create --subject-repo-path evdemo-generic-local/readme/${{ github.run_number }}/README.md \
+          --key "${{ secrets.PRIVATE_KEY_NAME }}" \
+          --predicate ./sign.json \ 
+          --predicate-type https://jfrog.com/evidence/signature/v1
 
       - name: Publish build info
         id: publish-build-info
-        run: jfrog rt build-publish ${{ vars.BUILD_NAME }} ${{ github.run_number }}
+        run: |
+          jfrog rt build-publish ${{ vars.BUILD_NAME }} ${{ github.run_number }}
 
-      - name: Sign build evidence
+      - name: Sign Build Evidence
         id: sign-build-evidence
         run: |
           echo '{ "actor": "${{ github.actor }}", "date": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'" }' > sign.json
@@ -122,7 +126,10 @@ jobs:
           echo '{ "actor": "${{ github.actor }}", "date": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'" }' > rbv2_evidence.json
           JF_LINK=${{ vars.ARTIFACTORY_URL }}'/ui/artifactory/lifecycle/?bundleName='${{ vars.BUNDLE_NAME }}'&bundleToFlash='${{ vars.BUNDLE_NAME }}'&releaseBundleVersion='${{ github.run_number }}'&repositoryKey=release-bundles-v2&activeVersionTab=Version%20Timeline&activeKanbanTab=promotion'
           echo 'Test on Release bundle ['${{ vars.BUNDLE_NAME }}':'${{ github.run_number }}']('${JF_LINK}') success' >> $GITHUB_STEP_SUMMARY
-          jf evd create --release-bundle ${{ vars.BUNDLE_NAME }} --release-bundle-version ${{ github.run_number }} \
-            --predicate ./rbv2_evidence.json --predicate-type https://jfrog.com/evidence/testing-results/v1 \
-            --key "${{ secrets.PRIVATE_KEY_NAME }}"
+          jf evd create \
+          --release-bundle ${{ vars.BUNDLE_NAME }} \
+          --release-bundle-version ${{ github.run_number }} \
+          --predicate ./rbv2_evidence.json \
+          --predicate-type https://jfrog.com/evidence/testing-results/v1 \
+          --key "${{ secrets.PRIVATE_KEY_NAME }}"
           echo '🔎 Evidence attached: integration-test 🧪 ' >> $GITHUB_STEP_SUMMARY
