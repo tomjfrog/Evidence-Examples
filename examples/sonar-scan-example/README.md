@@ -10,6 +10,8 @@ should be checked using a policy.
 
 ## Environment variables
 - `SONAR_TOKEN` - The sonar server token.
+- `SONAR_TYPE` - Should be Either SAAS or SELFHOSTED.
+- `SONAR_HOST` - The sonar server host name, for example sonar.myconpany.org. required for SELFHOSTED type, if not provided for SAAS type sonarcloud.io is used as default.
 
 ## Arguments
 `--reportTaskFile=<path>` - The path to the sonar report task file.
