@@ -3,12 +3,8 @@ import (
     "context"
     "encoding/json"
     "os"
-    "fmt"
-    "io"
     "log"
-	"net/http"
 	"time"
-    "bufio"
     "strings"
     "strconv"
   )
@@ -71,8 +67,7 @@ type SonarAnalysis struct {
 
 const (
 	DEFAULT_HTTP_TIMEOUT = 10 * time.Second
-	ANALYSIS_URL = "https://sonarcloud.io/api/qualitygates/project_status?analysisId=$analysisId"
-    LOG_FILE_LOCATION = "sonar-scan.log"
+	LOG_FILE_LOCATION = "sonar-scan.log"
 )
 func main() {
     ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -90,11 +85,19 @@ func main() {
         logger.Println("Sonar token not found, set SONAR_TOKEN variable")
         os.Exit(1)
     }
-///home/runner/work/Evidence-Examples/Evidence-Examples/.scannerwork/report-task.txt
+    sonar_type := os.Getenv("SONAR_TYPE")
+    if sonar_type == "" {
+        sonar_type = "SAAS"
+    } else if sonar_type != "SELFHOSTED" && sonar_type != "SAAS" {
+        logger.Println("Wrong Sonar type, set SONAR_TYPE variable to either SAAS or SELFHOSTED")
+        os.Exit(1)
+    }
+
+    //home/runner/work/Evidence-Examples/Evidence-Examples/.scannerwork/report-task.txt
     //get the sonar report file location or details to .scannerwork/.report-task.txt
     reportTaskFile := ".scannerwork/.report-task.txt"
     failOnAnalysisFailure := false
-    maxRetries := 0
+    maxRetries := 1
     waitTime := 5
     if len(os.Args) > 0 {
         // loop over all args
@@ -127,93 +130,28 @@ func main() {
         logger.Println("maxRetries:", maxRetries)
         logger.Println("WaitTime:", waitTime)
      }
-    // fmt.Println("reportTaskFile: ", reportTaskFile)
-    // Open the reportTaskFile
-	file, err := os.Open(reportTaskFile)
-	if err != nil {
-		logger.Println("Error opening file:", reportTaskFile, "error:", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-	ceTaskUrl:=""
+    response := SonarResponse{}
+    defaultSonarHost := "sonarcloud.io"
+    sonarHost := os.Getenv("SONAR_HOST")
 
-	// Read the file line by line
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
-		// Skip empty lines and comments
-		if len(line) == 0 || strings.HasPrefix(line, "#") {
-			continue
-		}
-		// Split the line into key and value
-		parts := strings.SplitN(line, "=", 2)
-		if len(parts) == 2 {
-			key := strings.TrimSpace(parts[0])
-			value := strings.TrimSpace(parts[1])
-			if key == "ceTaskUrl" {
-			    ceTaskUrl = value
-			    break
-			}
-		}
-	}
-	if err := scanner.Err(); err != nil {
-		logger.Println("Error reading file:", reportTaskFile , "error", err)
-        os.Exit(1)
-	}
-	if ceTaskUrl == "" {
-		fmt.Printf("ceTaskUrl Key not found")
-		os.Exit(1)
-	}
-    // Add a reusable HTTP client
-	var client = &http.Client{
-		Timeout: DEFAULT_HTTP_TIMEOUT,
-		Transport: &http.Transport{
-			MaxIdleConns:       100,
-			IdleConnTimeout:    10 * time.Second,
-			DisableCompression: true,
-		},
-	}
-	logger.Println("ceTaskUrl", ceTaskUrl)
-	// get the report task
-	retries := 0
+    if sonar_type == "SAAS" {
+        if sonarHost == "" {
+            sonarHost = defaultSonarHost
+        }
+        logger.Println("Running sonar analysis extraction for SAAS, host:", sonarHost)
 
-    var taskResponse SonarTaskResponse
-	for retries < maxRetries {
-        taskResponse, err = getReport(ctx, client, logger, ceTaskUrl, sonar_token )
-        if err != nil {
-            logger.Println("Error getting sonar report task", err)
+    }else if sonar_type == "SELFHOSTED" {
+        if sonarHost == "" {
+            logger.Println("Sonar host not found, set SONAR_HOST variable")
             os.Exit(1)
         }
-        if taskResponse.Task.Status == "SUCCESS" {
-            logger.Println("Sonar analysis task completed successfully after ", retries, " retries")
-            break
-        }
-        if taskResponse.Task.Status == "PENDING" || taskResponse.Task.Status == "IN_PROGRESS" {
-            logger.Println("Sonar analysis task is still in progress, waiting for ", waitTime, " seconds before retrying")
-            time.Sleep(time.Duration(waitTime) * time.Second)
-            retries++
-        }
-	}
-    if (taskResponse.Task.Status != "SUCCESS") {
-        logger.Println("Sonar analysis task after ", maxRetries, " retries is ", taskResponse.Task.Status, "exiting")
-        os.Exit(1)
+        logger.Println("Running sonar analysis extraction for " , sonar_type,  " server", sonarHost)
     }
+    response, err = runReport(ctx, logger, sonarHost, sonar_token, reportTaskFile, failOnAnalysisFailure,  maxRetries, waitTime)
 
-	logger.Println("taskResponse.Task.AnalysisId", taskResponse.Task.AnalysisId)
-    // get the analysis content
-    analysis , err := getAnalysis(ctx, client, logger, sonar_token, taskResponse.Task.AnalysisId)
     if err != nil {
-        logger.Println("Error getting sonar analysis report: ", err)
+        logger.Println("Error in generating report predicate:", err)
         os.Exit(1)
-    }
-    if analysis.ProjectStatus.Status != "OK" && failOnAnalysisFailure {
-        logger.Println("Sonar analysis failed, exiting according to failOnAnalysisFailure argument")
-        os.Exit(1)
-    }
-
-    response := SonarResponse{
-        Task: taskResponse.Task,
-        Analysis: analysis.ProjectStatus,
     }
 
     // marshal the response to JSON
@@ -225,70 +163,3 @@ func main() {
 	// return response to caller through stdout
 	os.Stdout.Write(jsonBytes)
  }
-
-
-func getReport(ctx context.Context , client *http.Client, logger *log.Logger, ceTaskUrl string, sonar_token string) (SonarTaskResponse, error) {
-	 // Make the HTTP GET request
-	logger.Println("getReport ceTaskUrl:",ceTaskUrl)
-	req, err := http.NewRequestWithContext(ctx, "GET", ceTaskUrl, nil)
-	req.Header.Set("Authorization", "Bearer " + sonar_token)
-	resp, err := client.Do(req)
-	if err != nil {
-		return SonarTaskResponse{}, fmt.Errorf("Error making the request, url:",ceTaskUrl, "error", err)
-	}
-
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-    if err != nil {
-        logger.Println("getReport error getting response body error:", err)
-        return SonarTaskResponse{}, fmt.Errorf("getReport error getting response body error, url:",ceTaskUrl, "error", err)
-    }
-
-	if resp.StatusCode != http.StatusOK {
-		return SonarTaskResponse{}, fmt.Errorf("getReport error getting response from", ceTaskUrl, " returned ", resp.StatusCode, " response body ", body)
-	}
-
-    logger.Println("getReport resp.StatusCode:", resp.StatusCode)
-
-    var taskResponse SonarTaskResponse
-    err = json.Unmarshal(body, &taskResponse)
-    if err != nil {
-		logger.Println("getReport error Unmarshal response body ", string(body))
-		return SonarTaskResponse{}, fmt.Errorf("error unmarshal report response for report", ceTaskUrl, "error",  err)
-	}
-	logger.Println("getReport taskResponse:", taskResponse)
-	return taskResponse, nil
-}
-
-func getAnalysis(ctx context.Context, client *http.Client, logger *log.Logger, sonar_token string, analysisId string) (SonarAnalysis, error) {
-
-    analysisUrl := strings.Replace(ANALYSIS_URL, "$analysisId", analysisId, 1)
-    logger.Println("analysisId", analysisId)
-    //logger.Println("analysisUrl", analysisUrl)
-	 // Make the HTTP GET request
-	req, err := http.NewRequestWithContext(ctx, "GET", analysisUrl , nil)
-	req.Header.Set("Authorization", "Bearer " + sonar_token)
-	resp, err := client.Do(req)
-	if err != nil {
-		return SonarAnalysis{}, fmt.Errorf("getAnalysis, Error making the request, url:",analysisUrl, "error", err)
-	}
-    defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-        logger.Println("getAnalysis error getting response body error:", err)
-        return SonarAnalysis{}, fmt.Errorf("getAnalysis error getting response body error, url:",analysisUrl, "error", err)
-    }
-
-	if resp.StatusCode != http.StatusOK {
-		return SonarAnalysis{}, fmt.Errorf("getAnalysis, error getting response from", analysisUrl, " returned ", resp.StatusCode, " response body ", body)
-	}
-
-    var analysisResponse  SonarAnalysis
-    err = json.Unmarshal(body, &analysisResponse)
-    if err != nil {
-		log.Println("getAnalysis, get temp credentials response body ", string(body))
-		return SonarAnalysis{}, fmt.Errorf("getAnalysis, error unmarshal analysis response", analysisUrl, "error",  err)
-	}
-
-	return analysisResponse, nil
-}
