@@ -86,7 +86,9 @@ func main() {
         os.Exit(1)
     }
     sonar_type := os.Getenv("SONAR_TYPE")
-    if sonar_type != "SELFHOSTED" && sonar_type != "SAAS" {
+    if sonar_type == "" {
+        sonar_type = "SAAS"
+    } else if sonar_type != "SELFHOSTED" && sonar_type != "SAAS" {
         logger.Println("Wrong Sonar type, set SONAR_TYPE variable to either SAAS or SELFHOSTED")
         os.Exit(1)
     }
