@@ -114,7 +114,7 @@ jobs:
         run: |
           echo '{ "files": [ {"build": "'"${{ vars.BUILD_NAME }}/${{ github.run_number }}"'" } ] }' > bundle-spec.json
           jf release-bundle-create ${{ vars.BUNDLE_NAME }} ${{ github.run_number }} \
-          --signing-key PGP-RSA-2048 \
+          --signing-key "${{ secrets.PRIVATE_KEY_NAME }}" \
           --spec bundle-spec.json \
           --sync=true
           NAME_LINK=${{ vars.ARTIFACTORY_URL }}'/ui/artifactory/lifecycle/?bundleName='${{ vars.BUNDLE_NAME }}'&bundleToFlash='${{ vars.BUNDLE_NAME }}'&repositoryKey=example-project-release-bundles-v2&activeKanbanTab=promotion'
