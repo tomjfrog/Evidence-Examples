@@ -86,9 +86,10 @@ jobs:
           jf rt upload ./README.md evdemo-generic-local/readme/${{ github.run_number }}/ \
           --build-name ${{ vars.BUILD_NAME }} \
           --build-number ${{ github.run_number }}
-          jf evd create --subject-repo-path evdemo-generic-local/readme/${{ github.run_number }}/README.md \
+          jf evd create \
+          --subject-repo-path evdemo-generic-local/readme/${{ github.run_number }}/README.md \
           --key "${{ secrets.PRIVATE_KEY_NAME }}" \
-          --predicate ./sign.json \ 
+          --predicate ./sign.json \
           --predicate-type https://jfrog.com/evidence/signature/v1
 
       - name: Publish build info
