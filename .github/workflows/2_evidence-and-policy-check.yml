@@ -29,7 +29,7 @@ jobs:
         with:
           registry: ${{ vars.ARTIFACTORY_URL }}
           username: ${{ steps.cli.outputs.oidc-user }}
-          password: ${{ steps.cli.outputs.access-token }}
+          password: ${{ steps.cli.outputs.oidc-token }}
 
       - name: Set up QEMU
         id: setup-qemu
