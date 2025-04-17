@@ -11,7 +11,7 @@ jobs:
   Docker-Build-With-Evidence:
     runs-on: ubuntu-latest
     steps:
-      - name: Install jfrog cli
+      - name: Install JFrog CLI
         uses: jfrog/setup-jfrog-cli@v4
         id: cli
         env:
@@ -28,13 +28,15 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: ${{ vars.ARTIFACTORY_URL }}
-          username: ${{ secrets.JF_USER }}
-          password: ${{ secrets.ARTIFACTORY_ACCESS_TOKEN }}
+          username: ${{ steps.cli.outputs.oidc-user }}
+          password: ${{ steps.cli.outputs.access-token }}
 
       - name: Set up QEMU
+        id: setup-qemu
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
+        id: setup-buildx
         uses: docker/setup-buildx-action@v3
         with:
           platforms: linux/amd64,linux/arm64
@@ -54,7 +56,7 @@ jobs:
           docker build \
           --build-arg REPO_URL=${REPO_URL} \
           -f Dockerfile . \
-          --tag ${REPO_URL}/example-project-app:${{ github.run_number }} \
+          --tag ${REPO_URL}/example-project-image:${{ github.run_number }} \
           --output=type=image \
           --platform linux/amd64 \
           --metadata-file=build-metadata \
@@ -130,12 +132,16 @@ jobs:
     needs: Docker-Build-With-Evidence
     runs-on: ubuntu-latest
     steps:
-    
-      - name: Install jfrog cli
+      - name: Install JFrog CLI
         uses: jfrog/setup-jfrog-cli@v4
+        id: cli
         env:
-          JF_URL: ${{ vars.ARTIFACTORY_URL }}
-          JF_ACCESS_TOKEN: ${{ secrets.ARTIFACTORY_ACCESS_TOKEN }}
+          JF_URL: ${{ vars.JF_URL }}
+          JF_PROJECT: ${{ vars.PROJECT_NAME }}
+        with:
+          oidc-provider-name: github-oidc-integration
+          oidc-audience: jfrog-github
+          disable-auto-build-publish: true
           
       - name: Promote to QA
         run: |
@@ -162,13 +168,18 @@ jobs:
     needs: Promote-To-QA-And-Test
     runs-on: ubuntu-latest
     steps:
-    
-      - name: Install jfrog cli
+
+      - name: Install JFrog CLI
         uses: jfrog/setup-jfrog-cli@v4
+        id: cli
         env:
-          JF_URL: ${{ vars.ARTIFACTORY_URL }}
-          JF_ACCESS_TOKEN: ${{ secrets.ARTIFACTORY_ACCESS_TOKEN }}
-    
+          JF_URL: ${{ vars.JF_URL }}
+          JF_PROJECT: ${{ vars.PROJECT_NAME }}
+        with:
+          oidc-provider-name: github-oidc-integration
+          oidc-audience: jfrog-github
+          disable-auto-build-publish: true
+
       - name: Checkout
         uses: actions/checkout@v4
 
