@@ -56,8 +56,6 @@ jobs:
         run: |
           URL=$(echo ${{ vars.ARTIFACTORY_URL }} | sed 's|^https://||')
           REPO_URL=${URL}'/${{ vars.DOCKER_VIRTUAL}}'
-          echo ${URL}
-          echo ${REPO_URL}
           docker build \
           --build-arg REPO_URL=${REPO_URL} -f Dockerfile . \
           --tag ${REPO_URL}/example-project-image:${{ github.run_number }} \
@@ -65,7 +63,10 @@ jobs:
           --platform linux/amd64 \
           --metadata-file=build-metadata \
           --push
-          jf rt build-docker-create ${{ vars.DOCKER_VIRTUAL}} --image-file build-metadata --build-name ${{ vars.BUILD_NAME }} --build-number ${{ github.run_number }}
+          jf rt build-docker-create ${{ vars.DOCKER_VIRTUAL}} \
+          --image-file build-metadata \
+          --build-name ${{ vars.BUILD_NAME }} \
+          --build-number ${{ github.run_number }}
 
       - name: Evidence on docker
         id: evidence-on-docker
@@ -91,6 +92,15 @@ jobs:
           --key "${{ secrets.PRIVATE_KEY_NAME }}" \
           --predicate ./sign.json \
           --predicate-type https://jfrog.com/evidence/signature/v1
+
+      - name: Collecting Information from Git
+        run: jf rt build-add-git ${{ vars.BUILD_NAME }} ${{ github.run_number }}
+
+      - name: Collecting Environment Variables
+        run: jf rt build-collect-env ${{ vars.BUILD_NAME }} ${{ github.run_number }}
+
+      - name: Publish build info
+        run: jfrog rt build-publish ${{ vars.BUILD_NAME }} ${{ github.run_number }}
 
       - name: Publish build info
         id: publish-build-info
