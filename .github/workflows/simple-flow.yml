@@ -1,4 +1,4 @@
-name: Simple Build and deploy
+name: Simple Build and Deploy
 
 on:
   [workflow_dispatch]

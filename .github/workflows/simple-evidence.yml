@@ -1,4 +1,4 @@
-name: simple-evidence-build
+name: Simple Evidence Build
 
 on:
   [workflow_dispatch]

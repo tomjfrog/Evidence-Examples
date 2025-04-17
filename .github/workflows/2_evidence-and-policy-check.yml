@@ -1,4 +1,4 @@
-name: Build and Deploy with Evidence
+name: Build and Deploy with Evidence and Policy Check
 
 on:
   [workflow_dispatch]
