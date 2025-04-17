@@ -7,9 +7,25 @@ permissions:
   id-token: write
   contents: read
 
+# Global variables
+env:
+  # Name for the Docker image
+  IMAGE_NAME: example-project-image
+  # Virtual repository for the Docker image build and deploy operations
+  DOCKER_VIRTUAL: ${{ vars.DOCKER_VIRTUAL}}
+  # Local Docker repository member of the virtual repository.  Required for Evidence attachment
+  DOCKER_LOCAL: example-project-docker-dev-local
+  # Name of the generic repo for the README file
+  GENERIC_LOCAL: example-project-generic-dev-local
+  # Name of the signing key residing in the JFrog Artifactory
+  PRIVATE_KEY_NAME: ${{ secrets.PRIVATE_KEY_NAME }}
+  # Name of the Docker Metadata file
+  DOCKER_METADATA: build-metadata
+
 jobs:
   Docker-Build-With-Evidence:
     runs-on: ubuntu-latest
+
     steps:
       - name: Install JFrog CLI
         uses: jfrog/setup-jfrog-cli@v4
@@ -52,20 +68,20 @@ jobs:
       - name: Build Docker image
         run: |
           URL=$(echo ${{ vars.ARTIFACTORY_URL }} | sed 's|^https://||')
-          REPO_URL=${URL}'/${{ vars.DOCKER_VIRTUAL}}'
+          REPO_URL=${URL}'/${{ env.DOCKER_VIRTUAL}}'
           docker build \
           --build-arg REPO_URL=${REPO_URL} \
           -f Dockerfile . \
-          --tag ${REPO_URL}/example-project-image:${{ github.run_number }} \
+          --tag ${REPO_URL}/${{ env.IMAGE_NAME }}:${{ github.run_number }} \
           --output=type=image \
           --platform linux/amd64 \
-          --metadata-file=build-metadata \
+          --metadata-file=${{ env.DOCKER_METADATA }} \
           --push
 
       - name: Create Docker Build Info
         run: |
           jf rt build-docker-create ${{ vars.DOCKER_VIRTUAL}} \
-          --image-file build-metadata \
+          --image-file ${{ env.DOCKER_METADATA }} \
           --build-name ${{ vars.BUILD_NAME }} \
           --build-number ${{ github.run_number }}
 
@@ -73,26 +89,25 @@ jobs:
         run: |
           echo '{ "actor": "${{ github.actor }}", "date": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'" }' > sign.json
           jf evd create \
-          --package-name example-project-app \
+          --package-name ${{ env.IMAGE_NAME }} \
           --package-version ${{ github.run_number }} \
-          --package-repo-name example-project-docker-dev-local \
-          --key "${{ secrets.PRIVATE_KEY_NAME }}" \
+          --package-repo-name ${{ env.DOCKER_LOCAL }} \
+          --key "${{ env.PRIVATE_KEY_NAME }}" \
           --predicate ./sign.json \
           --predicate-type https://jfrog.com/evidence/signature/v1 
           echo '🔎 Evidence attached: `signature` 🔏 ' 
 
       - name: Upload README file
         run: |
-          jf rt upload ./README.md example-project-generic-dev/readme/${{ github.run_number }}/ \
+          jf rt upload ./README.md ${{ env.GENERIC_LOCAL }}/readme/${{ github.run_number }}/ \
           --build-name ${{ vars.BUILD_NAME }} \
           --build-number ${{ github.run_number }}
 
       - name: Attach Evidence on README file
         run: |
           jf evd create \
-          --subject-repo-path example-project-generic-dev/readme/${{ github.run_number }}/README.md \
+          --subject-repo-path ${{ env.GENERIC_LOCAL }}/readme/${{ github.run_number }}/README.md \
           --key "${{ secrets.PRIVATE_KEY }}" \
-          --key-alias KEY-ALIAS  \
           --predicate ./sign.json --predicate-type https://jfrog.com/evidence/signature/v1
 
       - name: Decorate Build Info with Git Context
@@ -111,8 +126,7 @@ jobs:
           --build-name ${{ vars.BUILD_NAME }} \
           --build-number ${{ github.run_number }} \
           --predicate ./sign.json --predicate-type https://jfrog.com/evidence/build-signature/v1 \
-          --key "${{ secrets.PRIVATE_KEY_NAME }}"  \
-          --key-alias KEY-ALIAS
+          --key "${{ secrets.PRIVATE_KEY_NAME }}"
           echo '🔎 Evidence attached: `build-signature` 🔏 ' >> $GITHUB_STEP_SUMMARY
 
       - name: Create Release Bundle
