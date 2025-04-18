@@ -29,6 +29,8 @@ env:
   # Public Key Alias Name of the "Public Key" uploaded to the JFrog Platform under "Keys Management"
   # Used to verify the signature on attached evidence
   KEY_ALIAS: evidence-key
+  # Project Name
+  JF_PROJECT: evdemo
 
 
 jobs:
@@ -41,7 +43,7 @@ jobs:
         id: cli
         env:
           JF_URL: ${{ vars.JF_URL }}
-          JF_PROJECT: 'evdemo'
+#          JF_PROJECT: ${{ vars.JF_URL }}
         with:
           oidc-provider-name: github-oidc-integration
           oidc-audience: jfrog-github
@@ -120,7 +122,8 @@ jobs:
           --key "${{ env.PRIVATE_KEY_NAME }}" \
           --key-alias ${{ env.KEY_ALIAS }} \
           --predicate ./sign.json \
-          --predicate-type https://jfrog.com/evidence/signature/v1
+          --predicate-type https://jfrog.com/evidence/signature/v1 \
+          --project ${{ env.JF_PROJECT }} \
 
       - name: Decorate Build Info with Git Context
         run: jf rt build-add-git ${{ vars.BUILD_NAME }} ${{ github.run_number }}
