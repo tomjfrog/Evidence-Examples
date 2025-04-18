@@ -192,7 +192,7 @@ jobs:
           --release-bundle-version ${{ github.run_number }} \
           --predicate ./test_evidence.json \
           --predicate-type https://jfrog.com/evidence/testing-results/v1 \
-          --key "${{ secrets.PRIVATE_KEY }}" \
+          --key "${{ env.PRIVATE_KEY_NAME }}" \
           --key-alias ${{ env.KEY_ALIAS }} \
           --project ${{ env.JF_PROJECT }}
           echo '🔎 Evidence attached: integration-test 🧪 ' >> $GITHUB_STEP_SUMMARY
@@ -239,7 +239,7 @@ jobs:
         run: |
           if [ "${{ env.RESULT }}" == "true" ]; then
             jf evd create \
-            --key "${{ secrets.PRIVATE_KEY }}" \
+            --key "${{ env.PRIVATE_KEY_NAME }}" \ \
             --key-alias ${{ env.KEY_ALIAS }} \
             --release-bundle ${{ vars.BUNDLE_NAME }} \
             --release-bundle-version ${{ github.run_number }} \
@@ -247,7 +247,7 @@ jobs:
             --predicate-type https://jfrog.com/evidence/approval/v1 \
             --project ${{ env.JF_PROJECT }}
             jf release-bundle-promote ${{ vars.BUNDLE_NAME }} ${{ github.run_number }} PROD \
-            --signing-key PGP-RSA-2048  \
+            --signing-key ${{ secrets.GPG_KEY_NAME }}  \
             --sync=true \
             --project ${{ env.JF_PROJECT }}
             echo "🚀 Succesfully promote to \`PROD\` environemnt" >> $GITHUB_STEP_SUMMARY
