@@ -239,7 +239,7 @@ jobs:
 
       - name: Call GraphQL
         run: |
-          ./scripts/graphql.sh ${{ env.JF_URL }} ${{ steps.cli.outputs.oidc-token }} evdemo-release-bundles-v2 ${{ vars.BUNDLE_NAME }} ${{ github.run_number }} ./evidence-graph.json
+          ./scripts/graphql.sh ${{ vars.JF_URL }} ${{ steps.cli.outputs.oidc-token }} evdemo-release-bundles-v2 ${{ vars.BUNDLE_NAME }} ${{ github.run_number }} ./evidence-graph.json
           cat ./evidence-graph.json
 
       - name: Run policy
