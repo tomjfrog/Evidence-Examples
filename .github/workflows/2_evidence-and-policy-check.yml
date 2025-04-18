@@ -41,7 +41,7 @@ jobs:
         id: cli
         env:
           JF_URL: ${{ vars.JF_URL }}
-          JF_PROJECT: ${{ vars.PROJECT_NAME }}
+          JF_PROJECT: 'evdemo'
         with:
           oidc-provider-name: github-oidc-integration
           oidc-audience: jfrog-github
