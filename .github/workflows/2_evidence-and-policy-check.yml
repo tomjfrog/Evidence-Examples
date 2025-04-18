@@ -148,7 +148,7 @@ jobs:
 
       - name: Create Release Bundle
         run: |
-          echo '{ "files": [ {"build": "'"${{ vars.BUILD_NAME }}/${{ github.run_number }}"'" } ] }' > bundle-spec.json
+          echo '{ "files": [ {"build": "'"${{ vars.BUILD_NAME }}/${{ github.run_number }}"'", "project": "'"${{ env.JF_PROJECT }}"'" } ] }' > bundle-spec.json
           jf release-bundle-create ${{ vars.BUNDLE_NAME }} ${{ github.run_number }} \
           --signing-key ${{ secrets.GPG_KEY_NAME }} \
           --spec bundle-spec.json \
