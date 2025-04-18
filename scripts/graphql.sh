@@ -14,4 +14,5 @@ QUERY=$(envsubst < scripts/graphql_query.gql)
 curl -X POST "${BASE_URL}/evidence/api/v1/onemodel/graphql" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${BEARER_TOKEN}" \
-  -d "$QUERY" -o ${OUTPUT_FILE}
+  -d "$QUERY" \
+  -o ${OUTPUT_FILE}
