@@ -192,7 +192,7 @@ jobs:
           --release-bundle-version ${{ github.run_number }} \
           --predicate ./test_evidence.json \
           --predicate-type https://jfrog.com/evidence/testing-results/v1 \
-          --key "${{ env.PRIVATE_KEY_NAME }}" \
+          --key ${{ env.PRIVATE_KEY_NAME }} \
           --key-alias ${{ env.KEY_ALIAS }} \
           --project ${{ env.JF_PROJECT }}
           echo '🔎 Evidence attached: integration-test 🧪 ' >> $GITHUB_STEP_SUMMARY
