@@ -116,7 +116,7 @@ jobs:
         run: |
           jf evd create \
           --subject-repo-path ${{ env.GENERIC_LOCAL }}/readme/${{ github.run_number }}/README.md \
-          --key "${{ secrets.PRIVATE_KEY }}" \
+          --key "${{ env.PRIVATE_KEY_NAME }}" \
           --key-alias ${{ env.KEY_ALIAS }} \
           --predicate ./sign.json \
           --predicate-type https://jfrog.com/evidence/signature/v1
