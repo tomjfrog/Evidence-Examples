@@ -11,16 +11,21 @@ permissions:
 env:
   # Name for the Docker image
   IMAGE_NAME: example-project-image
+  # Name of the Docker Registry; i.e., the JFrog Cloud server base URL
+  DOKCER_REGISTRY: tomjfrog.jfrog.io
   # Virtual repository for the Docker image build and deploy operations
-  DOCKER_VIRTUAL: ${{ vars.DOCKER_VIRTUAL}}
+  DOCKER_VIRTUAL: evdemo-docker-virtual
   # Local Docker repository member of the virtual repository.  Required for Evidence attachment
-  DOCKER_LOCAL: example-project-docker-dev-local
+  DOCKER_LOCAL: evdemo-docker-local
   # Name of the generic repo for the README file
   GENERIC_LOCAL: example-project-generic-dev-local
   # Name of the signing key residing in the JFrog Artifactory
   PRIVATE_KEY_NAME: ${{ secrets.PRIVATE_KEY_NAME }}
   # Name of the Docker Metadata file
   DOCKER_METADATA: build-metadata
+  # Name of the Build
+  BUILD_NAME: evdemo-build
+
 
 jobs:
   Docker-Build-With-Evidence:
