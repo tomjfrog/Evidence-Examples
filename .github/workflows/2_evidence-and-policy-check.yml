@@ -182,6 +182,13 @@ jobs:
           --project ${{ env.JF_PROJECT }}
           echo "🚀 Succesfully promote to \`QA\` environemnt" >> $GITHUB_STEP_SUMMARY
 
+      - name: Setup Signing Key
+        id: setup-signing-key
+        run: |
+          echo "${{ secrets.PRIVATE_KEY_EXPORT }}" > "${{ secrets.PRIVATE_KEY_NAME }}"
+          chmod 600 ${{ secrets.PRIVATE_KEY_NAME }}
+          openssl rsa -in ${{ secrets.PRIVATE_KEY_NAME }} -check
+
       - name: Evidence on release-bundle
         run: |
           echo '{ "actor": "${{ github.actor }}", "date": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'", "test": "CI test", "result": "success" }' > test_evidence.json
@@ -213,6 +220,13 @@ jobs:
           oidc-provider-name: github-oidc-integration
           oidc-audience: jfrog-github
           disable-auto-build-publish: true
+
+      - name: Setup Signing Key
+        id: setup-signing-key
+        run: |
+          echo "${{ secrets.PRIVATE_KEY_EXPORT }}" > "${{ secrets.PRIVATE_KEY_NAME }}"
+          chmod 600 ${{ secrets.PRIVATE_KEY_NAME }}
+          openssl rsa -in ${{ secrets.PRIVATE_KEY_NAME }} -check      
 
       - name: Checkout
         uses: actions/checkout@v4
