@@ -152,7 +152,8 @@ jobs:
           jf release-bundle-create ${{ vars.BUNDLE_NAME }} ${{ github.run_number }} \
           --signing-key ${{ secrets.GPG_KEY_NAME }} \
           --spec bundle-spec.json \
-          --sync=true
+          --sync=true \
+          --project ${{ env.JF_PROJECT }}
           NAME_LINK=${{ vars.ARTIFACTORY_URL }}'/ui/artifactory/lifecycle/?bundleName='${{ vars.BUNDLE_NAME }}'&bundleToFlash='${{ vars.BUNDLE_NAME }}'&repositoryKey=release-bundles-v2&activeKanbanTab=promotion'
           VER_LINK=${{ vars.ARTIFACTORY_URL }}'/ui/artifactory/lifecycle/?bundleName='${{ vars.BUNDLE_NAME }}'&bundleToFlash='${{ vars.BUNDLE_NAME }}'&releaseBundleVersion='${{ github.run_number }}'&repositoryKey=release-bundles-v2&activeVersionTab=Version%20Timeline&activeKanbanTab=promotion'
           echo '📦 Release bundle ['${{ vars.BUNDLE_NAME }}']('${NAME_LINK}'):['${{ github.run_number }}']('${VER_LINK}') created' >> $GITHUB_STEP_SUMMARY
