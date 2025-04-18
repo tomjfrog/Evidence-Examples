@@ -30,7 +30,7 @@ env:
   # Used to verify the signature on attached evidence
   KEY_ALIAS: evidence-key
   # Project Name
-  JF_PROJECT: evdemo
+  JF_PROJECT: ${{ vars.JF_PROJECT }}
 
 
 jobs:
