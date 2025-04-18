@@ -18,7 +18,7 @@ env:
   # Local Docker repository member of the virtual repository.  Required for Evidence attachment
   DOCKER_LOCAL: evdemo-docker-local
   # Name of the generic repo for the README file
-  GENERIC_DEV_LOCAL: evdemo-generic-local
+  GENERIC_LOCAL: evdemo-generic-local
 #  GENERIC_QA_LOCAL: evdemo-generic-local
   # Name of the signing key residing in the JFrog Artifactory
   PRIVATE_KEY_NAME: ${{ secrets.PRIVATE_KEY_NAME }}
@@ -148,7 +148,6 @@ jobs:
           jf release-bundle-create ${{ vars.BUNDLE_NAME }} ${{ github.run_number }} \
           --signing-key ${{ secrets.GPG_KEY_NAME }} \
           --spec bundle-spec.json \
-          --project ${{ vars.PROJECT_NAME }} \
           --sync=true
           NAME_LINK=${{ vars.ARTIFACTORY_URL }}'/ui/artifactory/lifecycle/?bundleName='${{ vars.BUNDLE_NAME }}'&bundleToFlash='${{ vars.BUNDLE_NAME }}'&repositoryKey=release-bundles-v2&activeKanbanTab=promotion'
           VER_LINK=${{ vars.ARTIFACTORY_URL }}'/ui/artifactory/lifecycle/?bundleName='${{ vars.BUNDLE_NAME }}'&bundleToFlash='${{ vars.BUNDLE_NAME }}'&releaseBundleVersion='${{ github.run_number }}'&repositoryKey=release-bundles-v2&activeVersionTab=Version%20Timeline&activeKanbanTab=promotion'
@@ -173,7 +172,6 @@ jobs:
       - name: Promote to QA
         run: |
           jf release-bundle-promote ${{ vars.BUNDLE_NAME }} ${{ github.run_number }} QA \
-          --project ${{ vars.PROJECT_NAME }} \
           --signing-key ${{ secrets.GPG_KEY_NAME }} \
           --sync=true
           echo "🚀 Succesfully promote to \`QA\` environemnt" >> $GITHUB_STEP_SUMMARY
