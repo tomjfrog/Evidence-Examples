@@ -142,7 +142,8 @@ jobs:
           --build-number ${{ github.run_number }} \
           --predicate ./sign.json --predicate-type https://jfrog.com/evidence/build-signature/v1 \
           --key "${{ secrets.PRIVATE_KEY_NAME }}" \
-          --key-alias ${{ env.KEY_ALIAS }}
+          --key-alias ${{ env.KEY_ALIAS }} \
+          --project ${{ env.JF_PROJECT }} \
           echo '🔎 Evidence attached: `build-signature` 🔏 ' >> $GITHUB_STEP_SUMMARY
 
       - name: Create Release Bundle
