@@ -18,7 +18,7 @@ env:
   # Local Docker repository member of the virtual repository.  Required for Evidence attachment
   DOCKER_LOCAL: evdemo-docker-local
   # Name of the generic repo for the README file
-  GENERIC_LOCAL: example-project-generic-dev-local
+  GENERIC_LOCAL: evdemo-generic-local
   # Name of the signing key residing in the JFrog Artifactory
   PRIVATE_KEY_NAME: ${{ secrets.PRIVATE_KEY_NAME }}
   # Name of the Docker Metadata file
