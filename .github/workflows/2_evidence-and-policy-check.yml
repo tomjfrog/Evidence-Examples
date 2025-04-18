@@ -178,7 +178,7 @@ jobs:
         run: |
           jf release-bundle-promote ${{ vars.BUNDLE_NAME }} ${{ github.run_number }} QA \
           --signing-key ${{ secrets.GPG_KEY_NAME }} \
-          --sync=true
+          --sync=true \
           --project ${{ env.JF_PROJECT }}
           echo "🚀 Succesfully promote to \`QA\` environemnt" >> $GITHUB_STEP_SUMMARY
 
