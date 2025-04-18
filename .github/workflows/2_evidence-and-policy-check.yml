@@ -25,6 +25,9 @@ env:
   DOCKER_METADATA: build-metadata
   # Name of the Build
   BUILD_NAME: evdemo-build
+  # Public Key Alias Name of the "Public Key" uploaded to the JFrog Platform under "Keys Management"
+  # Used to verify the signature on attached evidence
+  KEY_ALIAS: evidence-key
 
 
 jobs:
@@ -98,6 +101,7 @@ jobs:
           --package-version ${{ github.run_number }} \
           --package-repo-name ${{ env.DOCKER_LOCAL }} \
           --key "${{ env.PRIVATE_KEY_NAME }}" \
+          --key-alias ${{ env.KEY_ALIAS }} \
           --predicate ./sign.json \
           --predicate-type https://jfrog.com/evidence/signature/v1 
           echo '🔎 Evidence attached: `signature` 🔏 ' 
@@ -113,7 +117,9 @@ jobs:
           jf evd create \
           --subject-repo-path ${{ env.GENERIC_LOCAL }}/readme/${{ github.run_number }}/README.md \
           --key "${{ secrets.PRIVATE_KEY }}" \
-          --predicate ./sign.json --predicate-type https://jfrog.com/evidence/signature/v1
+          --key-alias ${{ env.KEY_ALIAS }} \
+          --predicate ./sign.json \
+          --predicate-type https://jfrog.com/evidence/signature/v1
 
       - name: Decorate Build Info with Git Context
         run: jf rt build-add-git ${{ vars.BUILD_NAME }} ${{ github.run_number }}
@@ -131,7 +137,8 @@ jobs:
           --build-name ${{ vars.BUILD_NAME }} \
           --build-number ${{ github.run_number }} \
           --predicate ./sign.json --predicate-type https://jfrog.com/evidence/build-signature/v1 \
-          --key "${{ secrets.PRIVATE_KEY_NAME }}"
+          --key "${{ secrets.PRIVATE_KEY_NAME }}" \
+          --key-alias ${{ env.KEY_ALIAS }}
           echo '🔎 Evidence attached: `build-signature` 🔏 ' >> $GITHUB_STEP_SUMMARY
 
       - name: Create Release Bundle
@@ -178,7 +185,8 @@ jobs:
           --release-bundle-version ${{ github.run_number }} \
           --predicate ./test_evidence.json \
           --predicate-type https://jfrog.com/evidence/testing-results/v1 \
-          --key "${{ secrets.PRIVATE_KEY }}" --key-alias KEY-ALIAS
+          --key "${{ secrets.PRIVATE_KEY }}" \
+          --key-alias ${{ env.KEY_ALIAS }}
           echo '🔎 Evidence attached: integration-test 🧪 ' >> $GITHUB_STEP_SUMMARY
 
 
@@ -222,13 +230,18 @@ jobs:
       - name: Promote to Production
         run: |
           if [ "${{ env.RESULT }}" == "true" ]; then
-            jf evd create --key "${{ secrets.PRIVATE_KEY }}" --key-alias KEY-ALIAS \
-              --release-bundle ${{ vars.BUNDLE_NAME }} --release-bundle-version ${{ github.run_number }} \
-              --predicate ./policy.json --predicate-type https://jfrog.com/evidence/approval/v1
-            jf release-bundle-promote ${{ vars.BUNDLE_NAME }} ${{ github.run_number }} PROD --signing-key PGP-RSA-2048  --sync=true
+            jf evd create \
+            --key "${{ secrets.PRIVATE_KEY }}" \
+            --key-alias ${{ env.KEY_ALIAS }} \
+            --release-bundle ${{ vars.BUNDLE_NAME }} \
+            --release-bundle-version ${{ github.run_number }} \
+            --predicate ./policy.json \ 
+            --predicate-type https://jfrog.com/evidence/approval/v1
+            jf release-bundle-promote ${{ vars.BUNDLE_NAME }} ${{ github.run_number }} PROD \
+            --signing-key PGP-RSA-2048  \
+            --sync=true
             echo "🚀 Succesfully promote to \`PROD\` environemnt" >> $GITHUB_STEP_SUMMARY
           else
             echo "Fail promotion policy check" >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
-          
