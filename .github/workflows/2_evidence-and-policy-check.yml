@@ -179,6 +179,7 @@ jobs:
           jf release-bundle-promote ${{ vars.BUNDLE_NAME }} ${{ github.run_number }} QA \
           --signing-key ${{ secrets.GPG_KEY_NAME }} \
           --sync=true
+          --project ${{ env.JF_PROJECT }}
           echo "🚀 Succesfully promote to \`QA\` environemnt" >> $GITHUB_STEP_SUMMARY
 
       - name: Evidence on release-bundle
@@ -192,7 +193,8 @@ jobs:
           --predicate ./test_evidence.json \
           --predicate-type https://jfrog.com/evidence/testing-results/v1 \
           --key "${{ secrets.PRIVATE_KEY }}" \
-          --key-alias ${{ env.KEY_ALIAS }}
+          --key-alias ${{ env.KEY_ALIAS }} \
+          --project ${{ env.JF_PROJECT }}
           echo '🔎 Evidence attached: integration-test 🧪 ' >> $GITHUB_STEP_SUMMARY
 
 
@@ -242,10 +244,12 @@ jobs:
             --release-bundle ${{ vars.BUNDLE_NAME }} \
             --release-bundle-version ${{ github.run_number }} \
             --predicate ./policy.json \ 
-            --predicate-type https://jfrog.com/evidence/approval/v1
+            --predicate-type https://jfrog.com/evidence/approval/v1 \
+            --project ${{ env.JF_PROJECT }}
             jf release-bundle-promote ${{ vars.BUNDLE_NAME }} ${{ github.run_number }} PROD \
             --signing-key PGP-RSA-2048  \
-            --sync=true
+            --sync=true \
+            --project ${{ env.JF_PROJECT }}
             echo "🚀 Succesfully promote to \`PROD\` environemnt" >> $GITHUB_STEP_SUMMARY
           else
             echo "Fail promotion policy check" >> $GITHUB_STEP_SUMMARY
