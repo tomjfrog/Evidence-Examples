@@ -191,3 +191,35 @@ When the Evidence service is used in conjunction with JFrog Xray, each Release B
 To see a sample rego policy, go [here](https://github.com/jfrog/Evidence-Examples/blob/main/policy/policy.rego).
 For more information about integrating Release Lifecycle Management and Evidence with Xray, see [Scan Release Bundles (v2) with Xray](https://jfrog.com/help/r/jfrog-artifactory-documentation/scan-release-bundles-v2-with-xray).
 
+## Sequence Diagram
+```mermaid
+sequenceDiagram
+autonumber
+actor GitHub
+participant Docker
+participant JFrog
+participant OPA
+participant QA
+participant PROD
+
+    GitHub->>Docker: Build Docker Image
+    Docker->>JFrog: Push Image
+    GitHub->>JFrog: Create Build Info & Metadata
+    GitHub->>JFrog: Attach Evidence on Image
+    GitHub->>JFrog: Upload README.md
+    GitHub->>JFrog: Attach Evidence on README
+    GitHub->>JFrog: Decorate & Publish Build Info
+    GitHub->>JFrog: Sign Build Evidence
+    GitHub->>JFrog: Create Release Bundle
+
+    GitHub->>QA: Promote Release Bundle to QA
+    QA->>JFrog: Attach Integration Test Evidence
+
+    GitHub->>OPA: Run Policy Check on Evidence Graph
+    alt Policy Approved
+        GitHub->>JFrog: Attach Approval Evidence
+        GitHub->>PROD: Promote to Production
+    else Policy Rejected
+        GitHub->>GitHub: Fail with Policy Violation
+    end
+```
