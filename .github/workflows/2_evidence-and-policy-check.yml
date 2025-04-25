@@ -136,7 +136,7 @@ jobs:
           set +e
           # --FailOnAnalysisFailure causes a failure on gateway-failed sonar analysis 
           cat $PWD/.scannerwork/report-task.txt
-          cat $PWD/.scannerwork/report-task.txt > ${{ env.SONAR_RESULT_FILE }}
+#          cat $PWD/.scannerwork/report-task.txt > ${{ env.SONAR_RESULT_FILE }}
           EXIT_CODE=$?
           set -e          
           # write the exit code to the github output so that it can be used in the evidence creation step
@@ -145,6 +145,31 @@ jobs:
           echo "------EXIT------"
           echo "create-sonar-evidence=$EXIT_CODE" 
           echo "create-sonar-evidence=$EXIT_CODE" >> $GITHUB_OUTPUT 
+
+      - name: Fetch Sonar CE Task Result
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          set -euo pipefail
+          INPUT_FILE=$PWD/.scannerwork/report-task.txt
+          OUTPUT_FILE=${{ env.SONAR_RESULT_FILE }}
+          
+          # Extract the ceTaskUrl from the report file
+          CE_TASK_URL=$(grep '^ceTaskUrl=' "$INPUT_FILE" | cut -d= -f2-)
+          
+          if [[ -z "$CE_TASK_URL" ]]; then
+            echo "Error: ceTaskUrl not found in $INPUT_FILE" >&2
+            exit 1
+          fi
+          
+          # Fetch the CE task details and save as JSON
+          curl -sS \
+               -u "${SONAR_TOKEN}:" \
+               -H "Accept: application/json" \
+               "$CE_TASK_URL" \
+               -o "$OUTPUT_FILE"
+          
+          echo "✅ Fetched Sonar task details into $OUTPUT_FILE"
 
 
       - name: Create and Attach Evidence on Docker Image
