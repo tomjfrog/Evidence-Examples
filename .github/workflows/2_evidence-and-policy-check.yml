@@ -136,7 +136,6 @@ jobs:
           set +e
           # --FailOnAnalysisFailure causes a failure on gateway-failed sonar analysis 
           cat $PWD/.scannerwork/report-task.txt
-#          cat $PWD/.scannerwork/report-task.txt > ${{ env.SONAR_RESULT_FILE }}
           EXIT_CODE=$?
           set -e          
           # write the exit code to the github output so that it can be used in the evidence creation step
