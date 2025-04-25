@@ -31,8 +31,15 @@ env:
   KEY_ALIAS: evidence-key
   # Project Name
   JF_PROJECT: ${{ vars.JF_PROJECT }}
+  # Sonar Cloud Token
+  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+  # Sonar Cloud Organization
+  SONAR_ORGANIZATION: tomjfrog
+  # Sonar Cloud Project Key
+  SONAR_PROJECT_KEY: tomjfrog_Evidence-Examples
   # SonarQube Scan Result File Name
   SONAR_RESULT_FILE: sonar-results.json
+
 
 
 jobs:
@@ -119,12 +126,12 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           $PWD/sonar-scanner-6.2.1.4610/bin/sonar-scanner \
-            -Dsonar.projectKey=test-evidence \
-            -Dsonar.organization=my-evidence-test-org \
+            -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }} \
+            -Dsonar.organization=${{ env.SONAR_ORGANIZATION }} \
             -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.java.jdkHome=$JAVA_HOME \
             -Dsonar.verbose=true \
-            -Dsonar.token=$SONAR_TOKEN
+            -Dsonar.token=${{ env.SONAR_TOKEN }}
           # create evidence from sonar-scan analysis
           set +e
           # --FailOnAnalysisFailure causes a failure on gateway-failed sonar analysis 
