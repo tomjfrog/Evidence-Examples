@@ -50,18 +50,23 @@ For more information about evidence on the JFrog platform, see Evidence Manageme
 
 ### Install JFrog CLI
 
-This section of [build.yml](https://github.com/jfrog/Evidence-Examples/tree/main/.github/workflows/build.yml) installs the latest version of the JFrog CLI and performs checkout. Please note that a valid access token is required. 
+This section of [build.yml](https://github.com/jfrog/Evidence-Examples/tree/main/.github/workflows/build.yml) installs the latest version of the JFrog CLI and performs checkout. This example uses Github OIDC to exchange a Github Identity Token for a short-lived access token to JFrog Artifactory.
 
 ```yaml
 jobs:  
   Docker-build-with-evidence:  
     runs-on: ubuntu-latest  
-    steps:  
-      - name: Install jfrog cli  
-        uses: jfrog/setup-jfrog-cli@v4  
-        env:  
-          JF_URL: ${{ vars.ARTIFACTORY_URL }}  
-          JF_ACCESS_TOKEN: ${{ secrets.ARTIFACTORY_ACCESS_TOKEN }}
+    steps:
+      - name: Install JFrog CLI
+        uses: jfrog/setup-jfrog-cli@v4
+        id: cli
+        env:
+          JF_URL: ${{ vars.JF_URL }}
+#          JF_PROJECT: ${{ vars.JF_URL }}
+        with:
+          oidc-provider-name: github-oidc-integration
+          oidc-audience: jfrog-github
+          disable-auto-build-publish: true
 
       - uses: actions/checkout@v4
 ```
@@ -71,21 +76,34 @@ jobs:
 This section of [build.yml](https://github.com/jfrog/Evidence-Examples/tree/main/.github/workflows/build.yml) logs into the Docker registry, as described in the [prerequisites](#prerequisites), and sets up QEMU and Docker Buildx in preparation for building the Docker image.
 
 ```yaml
- - name: Log in to Artifactory Docker Registry  
-   uses: docker/login-action@v3  
-   with:  
-     registry: ${{ vars.ARTIFACTORY_URL }}  
-     username: ${{ secrets.JF_USER }}  
-     password: ${{ secrets.ARTIFACTORY_ACCESS_TOKEN }}
+  - name: Log in to Artifactory Docker Registry
+    uses: docker/login-action@v3
+    with:
+      registry: ${{ vars.ARTIFACTORY_URL }}
+      username: ${{ steps.cli.outputs.oidc-user }}
+      password: ${{ steps.cli.outputs.oidc-token }}
 
- - name: Set up QEMU  
-   uses: docker/setup-qemu-action@v3
+  - name: Set up QEMU
+    id: setup-qemu
+    uses: docker/setup-qemu-action@v3
 
- - name: Set up Docker Buildx  
-   uses: docker/setup-buildx-action@v3  
-   with:  
-     platforms: linux/amd64,linux/arm64  
-     install: true
+  - name: Set up Docker Buildx
+    id: setup-buildx
+    uses: docker/setup-buildx-action@v3
+    with:
+      platforms: linux/amd64,linux/arm64
+      install: true
+```
+### Provision Signing Key for Evidence Signature
+This will provision a signing key for the evidence signature. The signing key is used to sign the evidence files that are created during the build process.  The public key is stored in the JFrog Platform and referenced by Alias name. This allows for signing verification in the workflow.
+
+```yaml
+  - name: Setup Signing Key
+    id: setup-signing-key
+    run: |
+      echo "${{ secrets.PRIVATE_KEY_EXPORT }}" > "${{ secrets.PRIVATE_KEY_NAME }}"
+      chmod 600 ${{ secrets.PRIVATE_KEY_NAME }}
+      openssl rsa -in ${{ secrets.PRIVATE_KEY_NAME }} -check
 ```
 
 ## Build the Docker Image
@@ -93,14 +111,28 @@ This section of [build.yml](https://github.com/jfrog/Evidence-Examples/tree/main
 This section of [build.yml](https://github.com/jfrog/Evidence-Examples/tree/main/.github/workflows/build.yml) builds the Docker image and deploys it to Artifactory.
 
 ```yaml
- - name: Build Docker image  
-   run: |  
-     URL=$(echo ${{ vars.ARTIFACTORY_URL }} | sed 's|^https://||')  
-     REPO_URL=${URL}'/example-project-docker-dev-virtual'  
-     docker build --build-arg REPO_URL=${REPO_URL} -f Dockerfile . \  
-     --tag ${REPO_URL}/example-project-app:${{ github.run_number }} \  
-     --output=type=image --platform linux/amd64 --metadata-file=build-metadata --push  
-     jfrog rt build-docker-create example-project-docker-dev --image-file build-metadata --build-name ${{ vars.BUILD_NAME }} --build-number ${{ github.run_number }}
+      - name: Build Docker image
+        run: |
+          URL=$(echo ${{ vars.ARTIFACTORY_URL }} | sed 's|^https://||')
+          REPO_URL=${URL}'/${{ env.DOCKER_VIRTUAL}}'
+          docker build \
+          --build-arg REPO_URL=${REPO_URL} \
+          -f Dockerfile . \
+          --tag ${REPO_URL}/${{ env.IMAGE_NAME }}:${{ github.run_number }} \
+          --output=type=image \
+          --platform linux/amd64 \
+          --metadata-file=${{ env.DOCKER_METADATA }} \
+          --push
+```
+## Generate a Build Info for the Docker Build
+This will generate a Build Info for the Docker image, which we will continue to augment with additional Build information during the workflow.  The Build Info will be signed with a simple attestation and uploaded to Artficatory in a subsequent step
+```yaml
+  - name: Create Docker Build Info
+    run: |
+      jf rt build-docker-create ${{ vars.DOCKER_VIRTUAL}} \
+      --image-file ${{ env.DOCKER_METADATA }} \
+      --build-name ${{ vars.BUILD_NAME }} \
+      --build-number ${{ github.run_number }}
 ```
 
 ## Attach Package Evidence
@@ -108,13 +140,19 @@ This section of [build.yml](https://github.com/jfrog/Evidence-Examples/tree/main
 This section of [build.yml](https://github.com/jfrog/Evidence-Examples/tree/main/.github/workflows/build.yml) creates evidence for the package containing the Docker image. The evidence is signed with your private key, as defined in the [Prerequisites](#prerequisites).
 
 ```yaml
-- name: Evidence on docker  
-  run: |  
-     echo '{ "actor": "${{ github.actor }}", "date": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'" }' > sign.json  
-     jf evd create --package-name example-project-app --package-version 32 --package-repo-name example-project-docker-dev \  
-       --key "${{ secrets.PRIVATE_KEY }}" \  
-       --predicate ./sign.json --predicate-type https://jfrog.com/evidence/signature/v1   
-     echo ' Evidence attached: `signature` ' 
+  - name: Create and Attach Evidence on Docker Image
+    run: |
+      echo '{ "actor": "${{ github.actor }}", "date": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'" }' > sign.json
+      jf evd create \
+      --package-name ${{ env.IMAGE_NAME }} \
+      --package-version ${{ github.run_number }} \
+      --package-repo-name ${{ env.DOCKER_LOCAL }} \
+      --key "${{ env.PRIVATE_KEY_NAME }}" \
+      --key-alias ${{ env.KEY_ALIAS }} \
+      --predicate ./sign.json \
+      --predicate-type https://jfrog.com/evidence/signature/v1 
+      echo '🔎 Evidence attached: `signature` 🔏 ' 
+
 ```
 
 ## Upload README File and Associated Evidence
@@ -122,13 +160,25 @@ This section of [build.yml](https://github.com/jfrog/Evidence-Examples/tree/main
 This section of [build.yml](https://github.com/jfrog/Evidence-Examples/tree/main/.github/workflows/build.yml) uploads the README file and creates signed evidence about this generic artifact. The purpose of this section is to demonstrate the ability to create evidence for any type of file uploaded to Artifactory, in addition to packages, builds, and Release Bundles.
 
 ```yaml
-- name: Upload readme file  
-  run: |  
-    jf rt upload ./README.md example-project-generic-dev/readme/${{ github.run\_number }}/ --build-name ${{ vars.BUILD_NAME }} --build-number ${{ github.run_number }}  
-    jf evd create --subject-repo-path example-project-generic-dev/readme/${{ github.run_number }}/README.md \  
-      --key "${{ secrets.PRIVATE_KEY }}" \  
-      --predicate ./sign.json --predicate-type https://jfrog.com/evidence/signature/v1
+  - name: Upload README file
+    run: |
+      jf rt upload ./README.md ${{ env.GENERIC_LOCAL }}/readme/${{ github.run_number }}/ \
+      --build-name ${{ vars.BUILD_NAME }} \
+      --build-number ${{ github.run_number }}
+
+  - name: Attach Evidence on README file
+    run: |
+      jf evd create \
+      --subject-repo-path ${{ env.GENERIC_LOCAL }}/readme/${{ github.run_number }}/README.md \
+      --key "${{ env.PRIVATE_KEY_NAME }}" \
+      --key-alias ${{ env.KEY_ALIAS }} \
+      --predicate ./sign.json \
+      --predicate-type https://jfrog.com/evidence/signature/v1 \
+      --project ${{ env.JF_PROJECT }} \
 ```
+
+## Decorate Build Info with additional Metadata
+Build Info should collect as much information as possible about the Build environment & Git Info
 
 ## Publish Build Info and Attach Build Evidence
 
