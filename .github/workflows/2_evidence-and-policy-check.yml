@@ -221,7 +221,7 @@ jobs:
           --project ${{ env.JF_PROJECT }}
           echo '🔎 Evidence attached: `build-signature` 🔏 ' >> $GITHUB_STEP_SUMMARY
 
-      - name: Attach SonarQube Scan Result Evidence
+      - name: Attach SonarQube Scan Result Evidence To Build Info
         if: ${{ steps.run-sonar-scanner.outputs.create-sonar-evidence == 0 }}
         run: |
           # Attach evidence onto build using JFrog CLI                
@@ -277,7 +277,7 @@ jobs:
           chmod 600 ${{ secrets.PRIVATE_KEY_NAME }}
           openssl rsa -in ${{ secrets.PRIVATE_KEY_NAME }} -check
 
-      - name: Evidence on release-bundle
+      - name: Attach Evidence on Release Bundle
         run: |
           echo '{ "actor": "${{ github.actor }}", "date": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'", "test": "CI test", "result": "success" }' > test_evidence.json
           JF_LINK=${{ vars.ARTIFACTORY_URL }}'/ui/artifactory/lifecycle/?bundleName='${{ vars.BUNDLE_NAME }}'&bundleToFlash='${{ vars.BUNDLE_NAME }}'&releaseBundleVersion='${{ github.run_number }}'&repositoryKey=release-bundles-v2&activeVersionTab=Version%20Timeline&activeKanbanTab=promotion'

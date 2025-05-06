@@ -125,7 +125,7 @@ This section of [build.yml](https://github.com/jfrog/Evidence-Examples/tree/main
           --push
 ```
 ## Generate a Build Info for the Docker Build
-This will generate a Build Info for the Docker image, which we will continue to augment with additional Build information during the workflow.  The Build Info will be signed with a simple attestation and uploaded to Artficatory in a subsequent step
+This will generate a Build Info for the Docker image, which we will continue to augment with additional Build information during the workflow.  The Build Info will be signed with a simple attestation and uploaded to Artifactory in a subsequent step
 ```yaml
   - name: Create Docker Build Info
     run: |
