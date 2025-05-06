@@ -244,31 +244,37 @@ For more information about integrating Release Lifecycle Management and Evidence
 ## Sequence Diagram
 ```mermaid
 sequenceDiagram
-autonumber
-actor GitHub
-participant Docker
-participant JFrog
-participant OPA
-participant QA
-participant PROD
+    autonumber
+    actor GitHub
+    participant JF CLI
+    participant Evidence
+    participant Build Info
+    participant Docker Image
+    participant README
+    participant JFrog Docker Repo
+    participant JFrog Generic Repo
+    participant JFrog Build Info Repo
+    participant Release Bundle Repo
+    participant QA
+    participant OPA
+    participant PROD
 
-    GitHub->>Docker: Build Docker Image
-    Docker->>JFrog: Push Image
-    GitHub->>JFrog: Create Build Info & Metadata
-    GitHub->>JFrog: Attach Evidence on Image
-    GitHub->>JFrog: Upload README.md
-    GitHub->>JFrog: Attach Evidence on README
-    GitHub->>JFrog: Decorate & Publish Build Info
-    GitHub->>JFrog: Sign Build Evidence
-    GitHub->>JFrog: Create Release Bundle
-
-    GitHub->>QA: Promote Release Bundle to QA
+    GitHub->>Docker Image: Build Docker Image
+    Docker Image->>JFrog Docker Repo: Push Image
+    JF CLI->>Build Info: Create Build Info & Metadata
+    Evidence->>JFrog Docker Repo: Attach Evidence on Image
+    README->>JFrog Generic Repo: Upload README.md
+    Evidence->>JFrog Generic Repo: Attach Evidence on README
+    Build Info->>JFrog Build Info Repo: Decorate & Publish Build Info
+    Evidence->>JFrog Build Info Repo: Create Build Evidence
+    Evidence->>JFrog Build Info Repo: Attach Build Evidence
+    JF CLI->>Release Bundle Repo: Create Release Bundle
+    JF CLI->>QA: Promote Release Bundle to QA
     QA->>JFrog: Attach Integration Test Evidence
-
     GitHub->>OPA: Run Policy Check on Evidence Graph
     alt Policy Approved
-        GitHub->>JFrog: Attach Approval Evidence
-        GitHub->>PROD: Promote to Production
+        JF CLI->>Release Bundle Repo: Attach Approval Evidence
+        QA->>PROD: Promote to Production
     else Policy Rejected
         GitHub->>GitHub: Fail with Policy Violation
     end
