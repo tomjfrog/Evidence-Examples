@@ -325,7 +325,7 @@ jobs:
           chmod +x opa
           sudo mv opa /usr/local/bin/
 
-      - name: Call GraphQL
+      - name: Call GraphQL To Fetch Entire Evidence Graph
         run: |
           ./scripts/graphql.sh ${{ vars.JF_URL }} ${{ steps.cli.outputs.oidc-token }} evdemo-release-bundles-v2 ${{ vars.BUNDLE_NAME }} ${{ github.run_number }} ./evidence-graph.json
           cat ./evidence-graph.json
@@ -337,7 +337,7 @@ jobs:
           result=$(jq .approved ./policy.json)
           echo "RESULT=$result" >> $GITHUB_ENV
 
-      - name: Promote to Production
+      - name: Promote to Production (expected to fail due to missing policy requirement))
         run: |
           if [ "${{ env.RESULT }}" == "true" ]; then
             jf evd create \
