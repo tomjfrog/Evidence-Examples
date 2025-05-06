@@ -258,17 +258,18 @@ sequenceDiagram
     participant QA
     participant OPA
     participant PROD
-
+    
     GitHub->>Docker Image: Build Docker Image
     Docker Image->>JFrog Docker Repo: Push Image
-    JF CLI->>Build Info: Create Build Info & Metadata
+    JF CLI->>Build Info: Create Build Info
     Evidence->>JFrog Docker Repo: Attach Evidence on Image
     README->>JFrog Generic Repo: Upload README.md
     Evidence->>JFrog Generic Repo: Attach Evidence on README
     Build Info->>JFrog Build Info Repo: Decorate & Publish Build Info
-    Evidence->>JFrog Build Info Repo: Create Build Evidence
-    Evidence->>JFrog Build Info Repo: Attach Build Evidence
+    Evidence->>JFrog Build Info Repo: Attach Build Evidence (Actor, Date)
+    Evidence->>JFrog Build Info Repo: Attach Build Evidence (Sonar Scan)
     JF CLI->>Release Bundle Repo: Create Release Bundle
+    Evidence->>Release Bundle Repo: Attach Release Bundle Evidence
     JF CLI->>QA: Promote Release Bundle to QA
     QA->>JFrog: Attach Integration Test Evidence
     GitHub->>OPA: Run Policy Check on Evidence Graph
