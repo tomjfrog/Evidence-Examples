@@ -26,6 +26,8 @@ env:
   DOCKER_METADATA: build-metadata
   # Name of the Build
   BUILD_NAME: evdemo-build
+  # name of the Release bundle
+  BUNDLE_NAME: ${{ vars.BUNDLE_NAME }}
   # Public Key Alias Name of the "Public Key" uploaded to the JFrog Platform under "Keys Management"
   # Used to verify the signature on attached evidence
   KEY_ALIAS: evidence-key
@@ -237,14 +239,14 @@ jobs:
       - name: Create Release Bundle
         run: |
           echo '{ "files": [ {"build": "'"${{ vars.BUILD_NAME }}/${{ github.run_number }}"'", "project": "'"${{ env.JF_PROJECT }}"'" } ] }' > bundle-spec.json
-          jf release-bundle-create ${{ vars.BUNDLE_NAME }} ${{ github.run_number }} \
+          jf release-bundle-create ${{ env.BUNDLE_NAME }} ${{ github.run_number }} \
           --signing-key ${{ secrets.GPG_KEY_NAME }} \
           --spec bundle-spec.json \
           --sync=true \
           --project ${{ env.JF_PROJECT }}
-          NAME_LINK=${{ vars.ARTIFACTORY_URL }}'/ui/artifactory/lifecycle/?bundleName='${{ vars.BUNDLE_NAME }}'&bundleToFlash='${{ vars.BUNDLE_NAME }}'&repositoryKey=release-bundles-v2&activeKanbanTab=promotion'
-          VER_LINK=${{ vars.ARTIFACTORY_URL }}'/ui/artifactory/lifecycle/?bundleName='${{ vars.BUNDLE_NAME }}'&bundleToFlash='${{ vars.BUNDLE_NAME }}'&releaseBundleVersion='${{ github.run_number }}'&repositoryKey=release-bundles-v2&activeVersionTab=Version%20Timeline&activeKanbanTab=promotion'
-          echo '📦 Release bundle ['${{ vars.BUNDLE_NAME }}']('${NAME_LINK}'):['${{ github.run_number }}']('${VER_LINK}') created' >> $GITHUB_STEP_SUMMARY
+          NAME_LINK=${{ vars.ARTIFACTORY_URL }}'/ui/artifactory/lifecycle/?bundleName='${{ env.BUNDLE_NAME }}'&bundleToFlash='${{ env.BUNDLE_NAME }}'&repositoryKey=release-bundles-v2&activeKanbanTab=promotion'
+          VER_LINK=${{ vars.ARTIFACTORY_URL }}'/ui/artifactory/lifecycle/?bundleName='${{ env.BUNDLE_NAME }}'&bundleToFlash='${{ env.BUNDLE_NAME }}'&releaseBundleVersion='${{ github.run_number }}'&repositoryKey=release-bundles-v2&activeVersionTab=Version%20Timeline&activeKanbanTab=promotion'
+          echo '📦 Release bundle ['${{ env.BUNDLE_NAME }}']('${NAME_LINK}'):['${{ github.run_number }}']('${VER_LINK}') created' >> $GITHUB_STEP_SUMMARY
 
 
   Promote-To-QA-And-Test:
@@ -264,7 +266,7 @@ jobs:
           
       - name: Promote to QA
         run: |
-          jf release-bundle-promote ${{ vars.BUNDLE_NAME }} ${{ github.run_number }} QA \
+          jf release-bundle-promote ${{ env.BUNDLE_NAME }} ${{ github.run_number }} QA \
           --signing-key ${{ secrets.GPG_KEY_NAME }} \
           --sync=true \
           --project ${{ env.JF_PROJECT }}
@@ -280,10 +282,10 @@ jobs:
       - name: Attach Evidence on Release Bundle
         run: |
           echo '{ "actor": "${{ github.actor }}", "date": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'", "test": "CI test", "result": "success" }' > test_evidence.json
-          JF_LINK=${{ vars.ARTIFACTORY_URL }}'/ui/artifactory/lifecycle/?bundleName='${{ vars.BUNDLE_NAME }}'&bundleToFlash='${{ vars.BUNDLE_NAME }}'&releaseBundleVersion='${{ github.run_number }}'&repositoryKey=release-bundles-v2&activeVersionTab=Version%20Timeline&activeKanbanTab=promotion'
-          echo 'Test on Release bundle ['${{ vars.BUNDLE_NAME }}':'${{ github.run_number }}']('${JF_LINK}') success' >> $GITHUB_STEP_SUMMARY
+          JF_LINK=${{ vars.ARTIFACTORY_URL }}'/ui/artifactory/lifecycle/?bundleName='${{ env.BUNDLE_NAME }}'&bundleToFlash='${{ env.BUNDLE_NAME }}'&releaseBundleVersion='${{ github.run_number }}'&repositoryKey=release-bundles-v2&activeVersionTab=Version%20Timeline&activeKanbanTab=promotion'
+          echo 'Test on Release bundle ['${{ env.BUNDLE_NAME }}':'${{ github.run_number }}']('${JF_LINK}') success' >> $GITHUB_STEP_SUMMARY
           jf evd create \
-          --release-bundle ${{ vars.BUNDLE_NAME }} \
+          --release-bundle ${{ env.BUNDLE_NAME }} \
           --release-bundle-version ${{ github.run_number }} \
           --predicate ./test_evidence.json \
           --predicate-type https://jfrog.com/evidence/testing-results/v1 \
@@ -327,7 +329,7 @@ jobs:
 
       - name: Call GraphQL To Fetch Entire Evidence Graph
         run: |
-          ./scripts/graphql.sh ${{ vars.JF_URL }} ${{ steps.cli.outputs.oidc-token }} evdemo-release-bundles-v2 ${{ vars.BUNDLE_NAME }} ${{ github.run_number }} ./evidence-graph.json
+          ./scripts/graphql.sh ${{ vars.JF_URL }} ${{ steps.cli.outputs.oidc-token }} evdemo-release-bundles-v2 ${{ env.BUNDLE_NAME }} ${{ github.run_number }} ./evidence-graph.json
           cat ./evidence-graph.json
 
       - name: Run policy
@@ -343,12 +345,12 @@ jobs:
             jf evd create \
             --key "${{ env.PRIVATE_KEY_NAME }}" \ \
             --key-alias ${{ env.KEY_ALIAS }} \
-            --release-bundle ${{ vars.BUNDLE_NAME }} \
+            --release-bundle ${{ env.BUNDLE_NAME }} \
             --release-bundle-version ${{ github.run_number }} \
             --predicate ./policy.json \ 
             --predicate-type https://jfrog.com/evidence/approval/v1 \
             --project ${{ env.JF_PROJECT }}
-            jf release-bundle-promote ${{ vars.BUNDLE_NAME }} ${{ github.run_number }} PROD \
+            jf release-bundle-promote ${{ env.BUNDLE_NAME }} ${{ github.run_number }} PROD \
             --signing-key ${{ secrets.GPG_KEY_NAME }}  \
             --sync=true \
             --project ${{ env.JF_PROJECT }}
