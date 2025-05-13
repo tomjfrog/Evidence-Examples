@@ -10,7 +10,7 @@ permissions:
   
 env:
   # Name for the Docker image
-  IMAGE_NAME: example-project-image
+  IMAGE_NAME: example-basic-image
   # Name of the Docker Registry; i.e., the JFrog Cloud server base URL
   DOKCER_REGISTRY: tomjfrog.jfrog.io
   # Virtual repository for the Docker image build and deploy operations
@@ -32,7 +32,7 @@ env:
   # Used to verify the signature on attached evidence
   KEY_ALIAS: evidence-key
   # Project Name
-  JF_PROJECT: ${{ env.JF_PROJECT }}
+  JF_PROJECT: evdemo
   # Sonar Cloud Token
 #  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 #  # Sonar Cloud Organization
@@ -97,6 +97,10 @@ jobs:
           --platform linux/amd64 \
           --metadata-file=build-metadata \
           --push
+
+      - name: Create Build Info from Docker Build Metadata
+        id: create-build-info
+        run: |
           jf rt build-docker-create ${{ env.DOCKER_VIRTUAL}} \
           --image-file build-metadata \
           --build-name ${{ env.BUILD_NAME }} \
