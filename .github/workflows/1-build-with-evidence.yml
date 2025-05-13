@@ -9,6 +9,7 @@ permissions:
   contents: read
   
 env:
+  DOCKER_REGISTRY: tomjfrog.jfrog.io
   # Name for the Docker image
   IMAGE_NAME: example-basic-image
   # Name of the Docker Registry; i.e., the JFrog Cloud server base URL
@@ -63,7 +64,7 @@ jobs:
         id: docker-login
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.ARTIFACTORY_URL }}
+          registry: ${{ env.DOCKER_REGISTRY }}
           username: ${{ steps.cli.outputs.oidc-user }}
           password: ${{ steps.cli.outputs.oidc-token }}
 
