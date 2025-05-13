@@ -7,6 +7,40 @@ on:
 permissions:
   id-token: write
   contents: read
+  
+env:
+  # Name for the Docker image
+  IMAGE_NAME: example-project-image
+  # Name of the Docker Registry; i.e., the JFrog Cloud server base URL
+  DOKCER_REGISTRY: tomjfrog.jfrog.io
+  # Virtual repository for the Docker image build and deploy operations
+  DOCKER_VIRTUAL: evdemo-docker-virtual
+  # Local Docker repository member of the virtual repository.  Required for Evidence attachment
+  DOCKER_LOCAL: evdemo-docker-local
+  # Name of the generic repo for the README file
+  GENERIC_LOCAL: evdemo-generic-local
+  #  GENERIC_QA_LOCAL: evdemo-generic-local
+  # Name of the signing key residing in the JFrog Artifactory
+  PRIVATE_KEY_NAME: ${{ secrets.PRIVATE_KEY_NAME }}
+  # Name of the Docker Metadata file
+  DOCKER_METADATA: build-metadata
+  # Name of the Build
+  BUILD_NAME: evdemo-basic-build
+  # name of the Release bundle
+  BUNDLE_NAME: evdemo-basic-bundle
+  # Public Key Alias Name of the "Public Key" uploaded to the JFrog Platform under "Keys Management"
+  # Used to verify the signature on attached evidence
+  KEY_ALIAS: evidence-key
+  # Project Name
+  JF_PROJECT: ${{ env.JF_PROJECT }}
+  # Sonar Cloud Token
+#  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+#  # Sonar Cloud Organization
+#  SONAR_ORGANIZATION: tomjfrog
+#  # Sonar Cloud Project Key
+#  SONAR_PROJECT_KEY: tomjfrog_Evidence-Examples
+#  # SonarQube Scan Result File Name
+#  SONAR_RESULT_FILE: sonar-results.json
 
 jobs:
   Docker-Build-With-Evidence:
@@ -29,7 +63,7 @@ jobs:
         id: docker-login
         uses: docker/login-action@v3
         with:
-          registry: ${{ vars.ARTIFACTORY_URL }}
+          registry: ${{ env.ARTIFACTORY_URL }}
           username: ${{ steps.cli.outputs.oidc-user }}
           password: ${{ steps.cli.outputs.oidc-token }}
 
@@ -54,8 +88,8 @@ jobs:
       - name: Build Docker image
         id: build-docker-image
         run: |
-          URL=$(echo ${{ vars.ARTIFACTORY_URL }} | sed 's|^https://||')
-          REPO_URL=${URL}'/${{ vars.DOCKER_VIRTUAL}}'
+          URL=$(echo ${{ env.ARTIFACTORY_URL }} | sed 's|^https://||')
+          REPO_URL=${URL}'/${{ env.DOCKER_VIRTUAL}}'
           docker build \
           --build-arg REPO_URL=${REPO_URL} -f Dockerfile . \
           --tag ${REPO_URL}/example-project-image:${{ github.run_number }} \
@@ -63,9 +97,9 @@ jobs:
           --platform linux/amd64 \
           --metadata-file=build-metadata \
           --push
-          jf rt build-docker-create ${{ vars.DOCKER_VIRTUAL}} \
+          jf rt build-docker-create ${{ env.DOCKER_VIRTUAL}} \
           --image-file build-metadata \
-          --build-name ${{ vars.BUILD_NAME }} \
+          --build-name ${{ env.BUILD_NAME }} \
           --build-number ${{ github.run_number }}
 
       - name: Evidence on docker
@@ -75,7 +109,7 @@ jobs:
           jf evd create \
           --package-name example-project-image \
           --package-version ${{ github.run_number }} \
-          --package-repo-name ${{ vars.DOCKER_VIRTUAL}} \
+          --package-repo-name ${{ env.DOCKER_VIRTUAL}} \
           --key "${{ secrets.PRIVATE_KEY_NAME }}" \
           --predicate ./sign.json \
           --predicate-type https://jfrog.com/evidence/signature/v1 
@@ -85,7 +119,7 @@ jobs:
         id: upload-readme
         run: |
           jf rt upload ./README.md evdemo-generic-local/readme/${{ github.run_number }}/ \
-          --build-name ${{ vars.BUILD_NAME }} \
+          --build-name ${{ env.BUILD_NAME }} \
           --build-number ${{ github.run_number }}
           jf evd create \
           --subject-repo-path evdemo-generic-local/readme/${{ github.run_number }}/README.md \
@@ -94,25 +128,25 @@ jobs:
           --predicate-type https://jfrog.com/evidence/signature/v1
 
       - name: Collecting Information from Git
-        run: jf rt build-add-git ${{ vars.BUILD_NAME }} ${{ github.run_number }}
+        run: jf rt build-add-git ${{ env.BUILD_NAME }} ${{ github.run_number }}
 
       - name: Collecting Environment Variables
-        run: jf rt build-collect-env ${{ vars.BUILD_NAME }} ${{ github.run_number }}
+        run: jf rt build-collect-env ${{ env.BUILD_NAME }} ${{ github.run_number }}
 
       - name: Publish build info
-        run: jfrog rt build-publish ${{ vars.BUILD_NAME }} ${{ github.run_number }}
+        run: jfrog rt build-publish ${{ env.BUILD_NAME }} ${{ github.run_number }}
 
       - name: Publish build info
         id: publish-build-info
         run: |
-          jfrog rt build-publish ${{ vars.BUILD_NAME }} ${{ github.run_number }}
+          jfrog rt build-publish ${{ env.BUILD_NAME }} ${{ github.run_number }}
 
       - name: Sign Build Evidence
         id: sign-build-evidence
         run: |
           echo '{ "actor": "${{ github.actor }}", "date": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'" }' > sign.json
           jf evd create \
-          --build-name ${{ vars.BUILD_NAME }} \
+          --build-name ${{ env.BUILD_NAME }} \
           --build-number ${{ github.run_number }} \
           --predicate ./sign.json \
           --predicate-type https://jfrog.com/evidence/build-signature/v1 \
@@ -122,23 +156,23 @@ jobs:
       - name: Create release bundle
         id: create-release-bundle
         run: |
-          echo '{ "files": [ {"build": "'"${{ vars.BUILD_NAME }}/${{ github.run_number }}"'" } ] }' > bundle-spec.json
-          jf release-bundle-create ${{ vars.BUNDLE_NAME }} ${{ github.run_number }} \
+          echo '{ "files": [ {"build": "'"${{ env.BUILD_NAME }}/${{ github.run_number }}"'" } ] }' > bundle-spec.json
+          jf release-bundle-create ${{ env.BUNDLE_NAME }} ${{ github.run_number }} \
           --signing-key "${{ secrets.GPG_KEY_NAME }}" \
           --spec bundle-spec.json \
           --sync=true
-          NAME_LINK=${{ vars.ARTIFACTORY_URL }}'/ui/artifactory/lifecycle/?bundleName='${{ vars.BUNDLE_NAME }}'&bundleToFlash='${{ vars.BUNDLE_NAME }}'&repositoryKey=example-project-release-bundles-v2&activeKanbanTab=promotion'
-          VER_LINK=${{ vars.ARTIFACTORY_URL }}'/ui/artifactory/lifecycle/?bundleName='${{ vars.BUNDLE_NAME }}'&bundleToFlash='${{ vars.BUNDLE_NAME }}'&releaseBundleVersion='${{ github.run_number }}'&repositoryKey=example-project-release-bundles-v2&activeVersionTab=Version%20Timeline&activeKanbanTab=promotion'
-          echo '📦 Release bundle ['${{ vars.BUNDLE_NAME }}']('${NAME_LINK}'):['${{ github.run_number }}']('${VER_LINK}') created' >> $GITHUB_STEP_SUMMARY
+          NAME_LINK=${{ env.ARTIFACTORY_URL }}'/ui/artifactory/lifecycle/?bundleName='${{ env.BUNDLE_NAME }}'&bundleToFlash='${{ env.BUNDLE_NAME }}'&repositoryKey=example-project-release-bundles-v2&activeKanbanTab=promotion'
+          VER_LINK=${{ env.ARTIFACTORY_URL }}'/ui/artifactory/lifecycle/?bundleName='${{ env.BUNDLE_NAME }}'&bundleToFlash='${{ env.BUNDLE_NAME }}'&releaseBundleVersion='${{ github.run_number }}'&repositoryKey=example-project-release-bundles-v2&activeVersionTab=Version%20Timeline&activeKanbanTab=promotion'
+          echo '📦 Release bundle ['${{ env.BUNDLE_NAME }}']('${NAME_LINK}'):['${{ github.run_number }}']('${VER_LINK}') created' >> $GITHUB_STEP_SUMMARY
 
       - name: Evidence on release-bundle v2
         id: create-release-bundle-evidence
         run: |
           echo '{ "actor": "${{ github.actor }}", "date": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'" }' > rbv2_evidence.json
-          JF_LINK=${{ vars.ARTIFACTORY_URL }}'/ui/artifactory/lifecycle/?bundleName='${{ vars.BUNDLE_NAME }}'&bundleToFlash='${{ vars.BUNDLE_NAME }}'&releaseBundleVersion='${{ github.run_number }}'&repositoryKey=release-bundles-v2&activeVersionTab=Version%20Timeline&activeKanbanTab=promotion'
-          echo 'Test on Release bundle ['${{ vars.BUNDLE_NAME }}':'${{ github.run_number }}']('${JF_LINK}') success' >> $GITHUB_STEP_SUMMARY
+          JF_LINK=${{ env.ARTIFACTORY_URL }}'/ui/artifactory/lifecycle/?bundleName='${{ env.BUNDLE_NAME }}'&bundleToFlash='${{ env.BUNDLE_NAME }}'&releaseBundleVersion='${{ github.run_number }}'&repositoryKey=release-bundles-v2&activeVersionTab=Version%20Timeline&activeKanbanTab=promotion'
+          echo 'Test on Release bundle ['${{ env.BUNDLE_NAME }}':'${{ github.run_number }}']('${JF_LINK}') success' >> $GITHUB_STEP_SUMMARY
           jf evd create \
-          --release-bundle ${{ vars.BUNDLE_NAME }} \
+          --release-bundle ${{ env.BUNDLE_NAME }} \
           --release-bundle-version ${{ github.run_number }} \
           --predicate ./rbv2_evidence.json \
           --predicate-type https://jfrog.com/evidence/testing-results/v1 \
