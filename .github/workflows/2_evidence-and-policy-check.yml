@@ -27,7 +27,7 @@ env:
   # Name of the Build
   BUILD_NAME: evdemo-build
   # name of the Release bundle
-  BUNDLE_NAME: evdemo-bundle-two
+  BUNDLE_NAME: evdemo-release-bundle
   # Public Key Alias Name of the "Public Key" uploaded to the JFrog Platform under "Keys Management"
   # Used to verify the signature on attached evidence
   KEY_ALIAS: evidence-key
@@ -183,7 +183,7 @@ jobs:
           --key "${{ env.PRIVATE_KEY_NAME }}" \
           --key-alias ${{ env.KEY_ALIAS }} \
           --predicate ./sign.json \
-          --predicate-type https://jfrog.com/evidence/foo/v1 
+          --predicate-type https://jfrog.com/evidence/signature/v1 
           echo '🔎 Evidence attached: `signature` 🔏 '
 
       - name: Upload README file
