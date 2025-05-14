@@ -153,6 +153,7 @@ jobs:
           jf evd create \
           --build-name ${{ env.BUILD_NAME }} \
           --build-number ${{ github.run_number }} \
+          --project ${{ env.JF_PROJECT }} \
           --predicate ./sign.json \
           --predicate-type https://jfrog.com/evidence/build-signature/v1 \
           --key "${{ secrets.PRIVATE_KEY_NAME }}"
