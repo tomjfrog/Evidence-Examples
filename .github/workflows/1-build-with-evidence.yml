@@ -167,6 +167,7 @@ jobs:
           --signing-key "${{ secrets.GPG_KEY_NAME }}" \
           --spec bundle-spec.json \
           --sync=true
+          --project ${{ env.JF_PROJECT }}
           NAME_LINK=${{ env.ARTIFACTORY_URL }}'/ui/artifactory/lifecycle/?bundleName='${{ env.BUNDLE_NAME }}'&bundleToFlash='${{ env.BUNDLE_NAME }}'&repositoryKey=example-project-release-bundles-v2&activeKanbanTab=promotion'
           VER_LINK=${{ env.ARTIFACTORY_URL }}'/ui/artifactory/lifecycle/?bundleName='${{ env.BUNDLE_NAME }}'&bundleToFlash='${{ env.BUNDLE_NAME }}'&releaseBundleVersion='${{ github.run_number }}'&repositoryKey=example-project-release-bundles-v2&activeVersionTab=Version%20Timeline&activeKanbanTab=promotion'
           echo '📦 Release bundle ['${{ env.BUNDLE_NAME }}']('${NAME_LINK}'):['${{ github.run_number }}']('${VER_LINK}') created' >> $GITHUB_STEP_SUMMARY
@@ -183,4 +184,5 @@ jobs:
           --predicate ./rbv2_evidence.json \
           --predicate-type https://jfrog.com/evidence/testing-results/v1 \
           --key "${{ secrets.PRIVATE_KEY_NAME }}"
+          --project ${{ env.JF_PROJECT }}
           echo '🔎 Evidence attached: integration-test 🧪 ' >> $GITHUB_STEP_SUMMARY
