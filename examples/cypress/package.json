@@ -1,0 +1,27 @@
+{
+  "name": "cypress",
+  "version": "1.0.0",
+  "description": "",
+  "main": "cypress.config.js",
+  "devDependencies": {
+    "cypress": "^14.4.1",
+    "cypress-multi-reporters": "^2.0.5",
+    "mocha-json-reporter": "^1.0.0-1",
+    "mochawesome": "^7.1.3",
+    "mochawesome-merge": "^5.0.0"
+  },
+  "scripts": {
+    "build": "npm install",
+    "serve:app": "node src/server.js",
+    "start": "npm run build && npm run serve:app",
+    "e2e": "npx cypress run",
+    "merge-results": "npx mochawesome-merge reports/**/*.json -o reports/overall-report.json",
+    "generate:md": "node scripts/generate-report-md.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}
