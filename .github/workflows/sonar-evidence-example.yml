@@ -97,4 +97,4 @@ jobs:
             --build-name $GITHUB_WORKFLOW \
             --build-number "${{ github.run_number }}" \
             --key ${{ env.PRIVATE_KEY_NAME }} \
-            --key-alias ${{ env.KEY_ALIAS }} \ 
+            --key-alias ${{ env.KEY_ALIAS }}
