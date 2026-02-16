@@ -13,6 +13,8 @@ jobs:
     steps:
       - name: Install jfrog cli
         uses: jfrog/setup-jfrog-cli@v4
+        with:
+          version: 2.88.0
         env:
           JF_URL: ${{ vars.ARTIFACTORY_URL }}
           JF_ACCESS_TOKEN: ${{ secrets.ARTIFACTORY_ACCESS_TOKEN }}

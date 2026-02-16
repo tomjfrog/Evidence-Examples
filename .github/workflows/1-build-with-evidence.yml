@@ -49,14 +49,15 @@ jobs:
     steps:
       - name: Install jfrog cli
         uses: jfrog/setup-jfrog-cli@v4
+        with:
+          version: 2.88.0
+          oidc-provider-name: github-oidc-integration
+          oidc-audience: jfrog-github
+          disable-auto-build-publish: true
         id: cli
         env:
           JF_URL: https://tomjfrog.jfrog.io
           JF_PROJECT: evdemo
-        with:
-          oidc-provider-name: github-oidc-integration
-          oidc-audience: jfrog-github
-          disable-auto-build-publish: true
 
       - uses: actions/checkout@v4
 

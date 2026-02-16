@@ -51,14 +51,15 @@ jobs:
     steps:
       - name: Install JFrog CLI
         uses: jfrog/setup-jfrog-cli@v4
+        with:
+          version: 2.88.0
+          oidc-provider-name: github-oidc-integration
+          oidc-audience: jfrog-github
+          disable-auto-build-publish: true
         id: cli
         env:
           JF_URL: ${{ vars.JF_URL }}
 #          JF_PROJECT: ${{ vars.JF_URL }}
-        with:
-          oidc-provider-name: github-oidc-integration
-          oidc-audience: jfrog-github
-          disable-auto-build-publish: true
 
       - uses: actions/checkout@v4
 
@@ -255,14 +256,15 @@ jobs:
     steps:
       - name: Install JFrog CLI
         uses: jfrog/setup-jfrog-cli@v4
+        with:
+          version: 2.88.0
+          oidc-provider-name: github-oidc-integration
+          oidc-audience: jfrog-github
+          disable-auto-build-publish: true
         id: cli
         env:
           JF_URL: ${{ vars.JF_URL }}
           JF_PROJECT: ${{ vars.PROJECT_NAME }}
-        with:
-          oidc-provider-name: github-oidc-integration
-          oidc-audience: jfrog-github
-          disable-auto-build-publish: true
           
       - name: Promote to QA
         run: |
@@ -302,14 +304,15 @@ jobs:
 
       - name: Install JFrog CLI
         uses: jfrog/setup-jfrog-cli@v4
+        with:
+          version: 2.88.0
+          oidc-provider-name: github-oidc-integration
+          oidc-audience: jfrog-github
+          disable-auto-build-publish: true
         id: cli
         env:
           JF_URL: ${{ vars.JF_URL }}
           JF_PROJECT: ${{ vars.PROJECT_NAME }}
-        with:
-          oidc-provider-name: github-oidc-integration
-          oidc-audience: jfrog-github
-          disable-auto-build-publish: true
 
       - name: Setup Signing Key
         id: setup-signing-key

@@ -27,10 +27,11 @@ jobs:
       - name: Install jfrog cli
         id:   setup-cli
         uses: jfrog/setup-jfrog-cli@v4
+        with:
+          version: 2.88.0
+          oidc-provider-name: jfrog-github-oidc
         env:
           JF_URL: ${{ vars.ARTIFACTORY_URL }}
-        with:
-         oidc-provider-name: jfrog-github-oidc
 
       - uses: actions/checkout@v4
 
