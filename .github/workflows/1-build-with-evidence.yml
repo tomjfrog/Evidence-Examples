@@ -7,6 +7,8 @@ on:
 permissions:
   id-token: write
   contents: read
+  attestations: write
+  packages: write
   
 env:
   JF_URL: ${{ vars.JF_URL }}
@@ -122,8 +124,8 @@ jobs:
           --predicate-type https://jfrog.com/evidence/signature/v1 
           echo '🔎 Evidence attached: `signature` 🔏 ' 
 
-      - name: Upload Readme File
-        id: upload-readme
+      - name: Upload Readme File & Attach Evidence
+        id: upload-readme-and-attach-evidence
         run: |
           jf rt upload ./README.md evdemo-generic-local/readme/${{ github.run_number }}/ \
           --build-name ${{ env.BUILD_NAME }} \
@@ -131,6 +133,7 @@ jobs:
           jf evd create \
           --subject-repo-path evdemo-generic-local/readme/${{ github.run_number }}/README.md \
           --key "${{ secrets.PRIVATE_KEY_NAME }}" \
+          --key-alias ${{ env.KEY_ALIAS }} \
           --predicate ./sign.json \
           --predicate-type https://jfrog.com/evidence/signature/v1
 
@@ -153,7 +156,8 @@ jobs:
           --project ${{ env.JF_PROJECT }} \
           --predicate ./sign.json \
           --predicate-type https://jfrog.com/evidence/build-signature/v1 \
-          --key "${{ secrets.PRIVATE_KEY_NAME }}"
+          --key "${{ secrets.PRIVATE_KEY_NAME }}" \
+          --key-alias ${{ env.KEY_ALIAS }}
           echo '🔎 Evidence attached: `build-signature` 🔏 ' >> $GITHUB_STEP_SUMMARY
 
       - name: Create release bundle
@@ -190,5 +194,6 @@ jobs:
           --predicate ./rbv2_evidence.json \
           --predicate-type https://jfrog.com/evidence/testing-results/v1 \
           --key "${{ secrets.PRIVATE_KEY_NAME }}" \
+          --key-alias ${{ env.KEY_ALIAS }} \
           --project ${{ env.JF_PROJECT }}
           echo '🔎 Evidence attached: integration-test 🧪 ' >> $GITHUB_STEP_SUMMARY
