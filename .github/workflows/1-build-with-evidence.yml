@@ -113,16 +113,17 @@ jobs:
           push: true
           tags: ${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_VIRTUAL}}/${{ env.IMAGE_NAME }}:${{ github.run_number }}
 
-      - name: Write build metadata file
+      - name: Write image metadata file
         id: write-build-metadata
+        env:
+          IMAGE_DIGEST: ${{ steps.build-and-push.outputs.digest }}
         run: |
-          METADATA="${{ steps.build-and-push.outputs.metadata }}"
-          if [ -z "$METADATA" ]; then
-            echo "build-push-action did not return metadata output" >&2
+          if [ -z "$IMAGE_DIGEST" ]; then
+            echo "build-push-action did not return digest output" >&2
             exit 1
           fi
-          printf '%s' "$METADATA" > "${{ env.DOCKER_METADATA }}"
-          jq -e '.' "${{ env.DOCKER_METADATA }}" >/dev/null
+          IMAGE_TAG="${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_VIRTUAL }}/${{ env.IMAGE_NAME }}:${{ github.run_number }}"
+          printf '%s' "${IMAGE_TAG}@${IMAGE_DIGEST}" > "${{ env.DOCKER_METADATA }}"
 
       - name: Create Build Info from Docker Build Metadata
         id: create-build-info
