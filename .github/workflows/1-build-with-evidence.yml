@@ -110,6 +110,13 @@ jobs:
           --build-name ${{ env.BUILD_NAME }} \
           --build-number ${{ github.run_number }}
 
+      - name: Cat build-metadata
+        id: docker-build-metadata
+        run: |
+          echo "------build-metadata------"
+          echo "build-metadata=$(cat build-metadata)"
+          echo "build-metadata=$(cat build-metadata)" >> $GITHUB_OUTPUT
+
       - name: Evidence on docker
         id: evidence-on-docker
         run: |
@@ -147,6 +154,7 @@ jobs:
         run: jf rt build-publish ${{ env.BUILD_NAME }} ${{ github.run_number }}
 
       - name: Sign Build Evidence
+        if: false
         id: sign-build-evidence
         run: |
           echo '{ "actor": "${{ github.actor }}", "date": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'" }' > sign.json
@@ -159,6 +167,14 @@ jobs:
           --key "${{ secrets.PRIVATE_KEY_NAME }}" \
           --key-alias ${{ env.KEY_ALIAS }}
           echo '🔎 Evidence attached: `build-signature` 🔏 ' >> $GITHUB_STEP_SUMMARY
+
+      - name: Attest Build Provenance
+        uses: actions/attest-build-provenance@v3.2.0
+        id: gh-attest-build-provenance
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.docker-build-metadata.outputs.build-metadata }}
+          push-to-registry: false  
 
       - name: Create release bundle
         id: create-release-bundle
