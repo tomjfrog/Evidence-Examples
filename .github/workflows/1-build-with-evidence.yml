@@ -163,7 +163,6 @@ jobs:
             "files": [
               {
                 "build": "${{ env.BUILD_NAME }}/${{ github.run_number }}",
-                "includeDeps": false,
                 "project": "${{ env.JF_PROJECT }}"
               }
             ]
