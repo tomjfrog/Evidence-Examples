@@ -10,7 +10,7 @@ permissions:
 # Global variables
 env:
   # Name for the Docker image
-  IMAGE_NAME: example-project-image
+  IMAGE_NAME: external-evidence-example-image
   # Name of the Docker Registry; i.e., the JFrog Cloud server base URL
   DOCKER_REGISTRY: tomjfrog.jfrog.io
   # Virtual repository for the Docker image build and deploy operations
@@ -25,9 +25,9 @@ env:
   # Name of the Docker Metadata file
   DOCKER_METADATA: build-metadata
   # Name of the Build
-  BUILD_NAME: evdemo-build
+  BUILD_NAME: external-evidence-example-build
   # name of the Release bundle
-  BUNDLE_NAME: evdemo-release-bundle
+  BUNDLE_NAME: external-evidence-example-bundle
   # Public Key Alias Name of the "Public Key" uploaded to the JFrog Platform under "Keys Management"
   # Used to verify the signature on attached evidence
   KEY_ALIAS: evidence-key
@@ -133,7 +133,6 @@ jobs:
             -Dsonar.organization=${{ env.SONAR_ORGANIZATION }} \
             -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.java.jdkHome=$JAVA_HOME \
-            -Dsonar.verbose=true \
             -Dsonar.token=${{ env.SONAR_TOKEN }}
           # create evidence from sonar-scan analysis
           set +e
