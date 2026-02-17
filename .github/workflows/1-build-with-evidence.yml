@@ -108,8 +108,8 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           build-args: |
-            URL=$(echo ${{ vars.ARTIFACTORY_URL }} | sed 's|^https://||')
-            REPO_URL=${URL}'/${{ env.DOCKER_VIRTUAL}}' 
+            URL=${{ vars.ARTIFACTORY_URL }}
+            REPO_URL=${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_VIRTUAL}}' 
           context: .
           push: true
           tags: ${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_VIRTUAL}}/${{ env.IMAGE_NAME }}:${{ github.run_number }}
