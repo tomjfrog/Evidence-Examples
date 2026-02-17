@@ -12,7 +12,7 @@ env:
   # Name for the Docker image
   IMAGE_NAME: example-project-image
   # Name of the Docker Registry; i.e., the JFrog Cloud server base URL
-  DOKCER_REGISTRY: tomjfrog.jfrog.io
+  DOCKER_REGISTRY: tomjfrog.jfrog.io
   # Virtual repository for the Docker image build and deploy operations
   DOCKER_VIRTUAL: evdemo-docker-virtual
   # Local Docker repository member of the virtual repository.  Required for Evidence attachment
@@ -118,9 +118,9 @@ jobs:
 
       - name: Create Docker Build Info
         run: |
-          jf rt build-docker-create ${{ vars.DOCKER_VIRTUAL}} \
+          jf rt build-docker-create ${{ env.DOCKER_VIRTUAL }} \
           --image-file ${{ env.DOCKER_METADATA }} \
-          --build-name ${{ vars.BUILD_NAME }} \
+          --build-name ${{ env.BUILD_NAME }} \
           --build-number ${{ github.run_number }}
 
       - name: Run SonarScanner
@@ -190,7 +190,7 @@ jobs:
       - name: Upload README file
         run: |
           jf rt upload ./README.md ${{ env.GENERIC_LOCAL }}/readme/${{ github.run_number }}/ \
-          --build-name ${{ vars.BUILD_NAME }} \
+          --build-name ${{ env.BUILD_NAME }} \
           --build-number ${{ github.run_number }}
 
       - name: Attach Evidence on README file
@@ -204,19 +204,19 @@ jobs:
           --project ${{ env.JF_PROJECT }} \
 
       - name: Decorate Build Info with Git Context
-        run: jf rt build-add-git ${{ vars.BUILD_NAME }} ${{ github.run_number }}
+        run: jf rt build-add-git ${{ env.BUILD_NAME }} ${{ github.run_number }}
 
       - name: Decorate Build Info with Environment Variables
-        run: jf rt build-collect-env ${{ vars.BUILD_NAME }} ${{ github.run_number }}
+        run: jf rt build-collect-env ${{ env.BUILD_NAME }} ${{ github.run_number }}
 
       - name: Publish Build Info
-        run: jfrog rt build-publish ${{ vars.BUILD_NAME }} ${{ github.run_number }}
+        run: jfrog rt build-publish ${{ env.BUILD_NAME }} ${{ github.run_number }}
 
       - name: Create and Attach Build Actor & Timestamp Evidence
         run: |
           echo '{ "actor": "${{ github.actor }}", "date": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'" }' > sign.json
           jf evd create \
-          --build-name ${{ vars.BUILD_NAME }} \
+          --build-name ${{ env.BUILD_NAME }} \
           --build-number ${{ github.run_number }} \
           --predicate ./sign.json --predicate-type https://jfrog.com/evidence/build-signature/v1 \
           --key "${{ secrets.PRIVATE_KEY_NAME }}" \
@@ -229,7 +229,7 @@ jobs:
         run: |
           # Attach evidence onto build using JFrog CLI                
           jf evd create \
-            --build-name ${{ vars.BUILD_NAME }} \
+            --build-name ${{ env.BUILD_NAME }} \
             --build-number "${{ github.run_number }}" \
             --predicate ${{ env.SONAR_RESULT_FILE }} \
             --predicate-type https://jfrog.com/evidence/sonar-scan/v1 \
@@ -239,14 +239,14 @@ jobs:
 
       - name: Create Release Bundle
         run: |
-          echo '{ "files": [ {"build": "'"${{ vars.BUILD_NAME }}/${{ github.run_number }}"'", "project": "'"${{ env.JF_PROJECT }}"'" } ] }' > bundle-spec.json
+          echo '{ "files": [ {"build": "'"${{ env.BUILD_NAME }}/${{ github.run_number }}"'", "project": "'"${{ env.JF_PROJECT }}"'" } ] }' > bundle-spec.json
           jf release-bundle-create ${{ env.BUNDLE_NAME }} ${{ github.run_number }} \
           --signing-key ${{ secrets.GPG_KEY_NAME }} \
           --spec bundle-spec.json \
           --sync=true \
           --project ${{ env.JF_PROJECT }}
-          NAME_LINK=${{ vars.ARTIFACTORY_URL }}'/ui/artifactory/lifecycle/?bundleName='${{ env.BUNDLE_NAME }}'&bundleToFlash='${{ env.BUNDLE_NAME }}'&repositoryKey=release-bundles-v2&activeKanbanTab=promotion'
-          VER_LINK=${{ vars.ARTIFACTORY_URL }}'/ui/artifactory/lifecycle/?bundleName='${{ env.BUNDLE_NAME }}'&bundleToFlash='${{ env.BUNDLE_NAME }}'&releaseBundleVersion='${{ github.run_number }}'&repositoryKey=release-bundles-v2&activeVersionTab=Version%20Timeline&activeKanbanTab=promotion'
+          NAME_LINK=${{ vars.JF_URL }}'/ui/artifactory/lifecycle/?bundleName='${{ env.BUNDLE_NAME }}'&bundleToFlash='${{ env.BUNDLE_NAME }}'&repositoryKey=release-bundles-v2&activeKanbanTab=promotion'
+          VER_LINK=${{ vars.JF_URL }}'/ui/artifactory/lifecycle/?bundleName='${{ env.BUNDLE_NAME }}'&bundleToFlash='${{ env.BUNDLE_NAME }}'&releaseBundleVersion='${{ github.run_number }}'&repositoryKey=release-bundles-v2&activeVersionTab=Version%20Timeline&activeKanbanTab=promotion'
           echo '📦 Release bundle ['${{ env.BUNDLE_NAME }}']('${NAME_LINK}'):['${{ github.run_number }}']('${VER_LINK}') created' >> $GITHUB_STEP_SUMMARY
 
 
@@ -284,7 +284,7 @@ jobs:
       - name: Attach Evidence on Release Bundle
         run: |
           echo '{ "actor": "${{ github.actor }}", "date": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'", "test": "CI test", "result": "success" }' > test_evidence.json
-          JF_LINK=${{ vars.ARTIFACTORY_URL }}'/ui/artifactory/lifecycle/?bundleName='${{ env.BUNDLE_NAME }}'&bundleToFlash='${{ env.BUNDLE_NAME }}'&releaseBundleVersion='${{ github.run_number }}'&repositoryKey=release-bundles-v2&activeVersionTab=Version%20Timeline&activeKanbanTab=promotion'
+          JF_LINK=${{ vars.JF_URL }}'/ui/artifactory/lifecycle/?bundleName='${{ env.BUNDLE_NAME }}'&bundleToFlash='${{ env.BUNDLE_NAME }}'&releaseBundleVersion='${{ github.run_number }}'&repositoryKey=release-bundles-v2&activeVersionTab=Version%20Timeline&activeKanbanTab=promotion'
           echo 'Test on Release bundle ['${{ env.BUNDLE_NAME }}':'${{ github.run_number }}']('${JF_LINK}') success' >> $GITHUB_STEP_SUMMARY
           jf evd create \
           --release-bundle ${{ env.BUNDLE_NAME }} \

@@ -9,7 +9,7 @@ permissions:
   contents: read
   
 env:
-  ARTIFACTORY_URL: tomjfrog.jfrog.io
+  JF_URL: ${{ vars.JF_URL }}
   # Name for the Docker image
   IMAGE_NAME: evdemo-image
   # Name of the Docker Registry; i.e., the JFrog Cloud server base URL
@@ -56,7 +56,7 @@ jobs:
           disable-auto-build-publish: true
         id: cli
         env:
-          JF_URL: https://tomjfrog.jfrog.io
+          JF_URL: ${{ vars.JF_URL }}
           JF_PROJECT: evdemo
 
       - uses: actions/checkout@v4
@@ -65,7 +65,7 @@ jobs:
         id: docker-login
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.ARTIFACTORY_URL }}
+          registry: ${{ vars.ARTIFACTORY_URL }}
           username: ${{ steps.cli.outputs.oidc-user }}
           password: ${{ steps.cli.outputs.oidc-token }}
 
@@ -90,7 +90,7 @@ jobs:
       - name: Build Docker image
         id: build-docker-image
         run: |
-          URL=$(echo ${{ env.ARTIFACTORY_URL }} | sed 's|^https://||')
+          URL=$(echo ${{ vars.ARTIFACTORY_URL }} | sed 's|^https://||')
           REPO_URL=${URL}'/${{ env.DOCKER_VIRTUAL}}'
           docker build \
           --build-arg REPO_URL=${REPO_URL} -f Dockerfile . \
@@ -169,15 +169,15 @@ jobs:
           --spec bundle-spec.json \
           --sync=true \
           --project ${{ env.JF_PROJECT }}
-          NAME_LINK=${{ env.ARTIFACTORY_URL }}'/ui/artifactory/lifecycle/?bundleName='${{ env.BUNDLE_NAME }}'&bundleToFlash='${{ env.BUNDLE_NAME }}'&repositoryKey=example-project-release-bundles-v2&activeKanbanTab=promotion'
-          VER_LINK=${{ env.ARTIFACTORY_URL }}'/ui/artifactory/lifecycle/?bundleName='${{ env.BUNDLE_NAME }}'&bundleToFlash='${{ env.BUNDLE_NAME }}'&releaseBundleVersion='${{ github.run_number }}'&repositoryKey=example-project-release-bundles-v2&activeVersionTab=Version%20Timeline&activeKanbanTab=promotion'
+          NAME_LINK=${{ env.JF_URL }}'/ui/artifactory/lifecycle/?bundleName='${{ env.BUNDLE_NAME }}'&bundleToFlash='${{ env.BUNDLE_NAME }}'&repositoryKey=example-project-release-bundles-v2&activeKanbanTab=promotion'
+          VER_LINK=${{ env.JF_URL }}'/ui/artifactory/lifecycle/?bundleName='${{ env.BUNDLE_NAME }}'&bundleToFlash='${{ env.BUNDLE_NAME }}'&releaseBundleVersion='${{ github.run_number }}'&repositoryKey=example-project-release-bundles-v2&activeVersionTab=Version%20Timeline&activeKanbanTab=promotion'
           echo '📦 Release bundle ['${{ env.BUNDLE_NAME }}']('${NAME_LINK}'):['${{ github.run_number }}']('${VER_LINK}') created' >> $GITHUB_STEP_SUMMARY
 
       - name: Evidence on release-bundle v2
         id: create-release-bundle-evidence
         run: |
           echo '{ "actor": "${{ github.actor }}", "date": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'" }' > rbv2_evidence.json
-          JF_LINK=${{ env.ARTIFACTORY_URL }}'/ui/artifactory/lifecycle/?bundleName='${{ env.BUNDLE_NAME }}'&bundleToFlash='${{ env.BUNDLE_NAME }}'&releaseBundleVersion='${{ github.run_number }}'&repositoryKey=release-bundles-v2&activeVersionTab=Version%20Timeline&activeKanbanTab=promotion'
+          JF_LINK=${{ env.JF_URL }}'/ui/artifactory/lifecycle/?bundleName='${{ env.BUNDLE_NAME }}'&bundleToFlash='${{ env.BUNDLE_NAME }}'&releaseBundleVersion='${{ github.run_number }}'&repositoryKey=release-bundles-v2&activeVersionTab=Version%20Timeline&activeKanbanTab=promotion'
           echo 'Test on Release bundle ['${{ env.BUNDLE_NAME }}':'${{ github.run_number }}']('${JF_LINK}') success' >> $GITHUB_STEP_SUMMARY
           jf evd create \
           --release-bundle ${{ env.BUNDLE_NAME }} \
