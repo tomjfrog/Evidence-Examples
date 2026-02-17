@@ -113,11 +113,22 @@ jobs:
           push: true
           tags: ${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_VIRTUAL}}/${{ env.IMAGE_NAME }}:${{ github.run_number }}
 
+      - name: Write build metadata file
+        id: write-build-metadata
+        run: |
+          METADATA="${{ steps.build-and-push.outputs.metadata }}"
+          if [ -z "$METADATA" ]; then
+            echo "build-push-action did not return metadata output" >&2
+            exit 1
+          fi
+          printf '%s' "$METADATA" > "${{ env.DOCKER_METADATA }}"
+          jq -e '.' "${{ env.DOCKER_METADATA }}" >/dev/null
+
       - name: Create Build Info from Docker Build Metadata
         id: create-build-info
         run: |
           jf rt build-docker-create ${{ env.DOCKER_VIRTUAL}} \
-          --image-file build-metadata \
+          --image-file ${{ env.DOCKER_METADATA }} \
           --build-name ${{ env.BUILD_NAME }} \
           --build-number ${{ github.run_number }}
 
@@ -132,7 +143,7 @@ jobs:
         if: false
         id: image-digest
         run: |
-          DIGEST=$(jq -r '."containerimage.digest"' build-metadata)
+          DIGEST=$(jq -r '."containerimage.digest"' "${{ env.DOCKER_METADATA }}")
           if [ -z "$DIGEST" ] || [ "$DIGEST" = "null" ]; then
             echo "Image digest not found in build-metadata" >&2
             exit 1
