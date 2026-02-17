@@ -26,7 +26,7 @@ jobs:
           version: 2.88.0
           oidc-provider-name: my-oidc-integration
         env:
-          JF_URL: https://${{ vars.ARTIFACTORY_URL }}
+          JF_URL: ${{ vars.JF_URL }}
     
       - name: Checkout
         uses: actions/checkout@v4
@@ -38,7 +38,7 @@ jobs:
          
       - name: Call GraphQL
         run: |
-          ./scripts/graphql.sh https://${{ vars.ARTIFACTORY_URL }} ${{ steps.setup-cli.outputs.oidc-token }} release-bundles-v2 ${{ inputs.bundle-name }} ${{ inputs.bundle-version }} ./evidence-graph.json
+          ./scripts/graphql.sh ${{ vars.JF_URL }} ${{ steps.setup-cli.outputs.oidc-token }} release-bundles-v2 ${{ inputs.bundle-name }} ${{ inputs.bundle-version }} ./evidence-graph.json
           cat ./evidence-graph.json
       - name: Run policy
         id: run_policy

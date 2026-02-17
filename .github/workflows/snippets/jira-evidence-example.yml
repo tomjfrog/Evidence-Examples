@@ -16,6 +16,7 @@ jobs:
   docker-build-with-jira-evidence:
     runs-on: ubuntu-latest
     env:
+      JF_URL: ${{ vars.JF_URL }}
       DOCKER_REPO: 'test-docker-local'
       IMAGE_NAME: 'my-very-cool-image:${{ github.run_number }}'
     steps:
@@ -26,7 +27,7 @@ jobs:
           version: 2.88.0
           oidc-provider-name: jfrog-github-oidc
         env:
-          JF_URL: ${{ vars.ARTIFACTORY_URL }}
+          JF_URL: ${{ vars.JF_URL }}
 
       - uses: actions/checkout@v4
       - name: Log in to Artifactory Docker Registry
@@ -46,12 +47,12 @@ jobs:
           push: true
           provenance: false
           platforms: linux/amd64 #, linux/arm64
-          build-args: REPO_URL=${{ vars.JF_URL }}/example-project-docker-dev-remote
-          tags: ${{ vars.JF_URL }}/${{ env.DOCKER_REPO }}/${{ env.IMAGE_NAME }}
+          build-args: REPO_URL=${{ vars.ARTIFACTORY_URL }}/example-project-docker-dev-remote
+          tags: ${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_REPO }}/${{ env.IMAGE_NAME }}
 
       - name: add docker package to build
         run: |
-          echo "${{ vars.JF_URL }}/${{ env.DOCKER_REPO }}/${{ env.IMAGE_NAME }}@${{ steps.docker-build.outputs.digest }}" > metadata.json
+          echo "${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_REPO }}/${{ env.IMAGE_NAME }}@${{ steps.docker-build.outputs.digest }}" > metadata.json
           jf rt build-docker-create ${{ env.DOCKER_REPO }} --image-file metadata.json --build-name $GITHUB_WORKFLOW --build-number ${{ github.run_number }}
 
       - name: Publish build info

@@ -30,7 +30,7 @@ jobs:
           version: 2.88.0
           oidc-provider-name: jfrog-github-oidc
         env:
-          JF_URL: ${{ vars.ARTIFACTORY_URL }}
+          JF_URL: ${{ vars.JF_URL }}
 
       - uses: actions/checkout@v4
 
