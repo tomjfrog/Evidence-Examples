@@ -129,7 +129,7 @@ jobs:
       - name: Attest build provenance
         uses: actions/attest-build-provenance@v3
         with:
-          subject-name: ${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_VIRTUAL }}/example-project-image
+          subject-name: ${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_VIRTUAL }}/${{ env.IMAGE_NAME }}
           subject-digest: ${{ steps.image-digest.outputs.image_digest }}
           push-to-registry: false
 
@@ -183,14 +183,6 @@ jobs:
           --key "${{ secrets.PRIVATE_KEY_NAME }}" \
           --key-alias ${{ env.KEY_ALIAS }}
           echo '🔎 Evidence attached: `build-signature` 🔏 ' >> $GITHUB_STEP_SUMMARY
-
-      - name: Attest Build Provenance
-        uses: actions/attest-build-provenance@v3.2.0
-        id: gh-attest-build-provenance
-        with:
-          subject-name: ${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_VIRTUAL }}/${{ env.IMAGE_NAME }}
-          subject-digest: ${{ steps.docker-build-metadata.outputs.build-metadata }}
-          push-to-registry: false  
 
       - name: Create release bundle
         id: create-release-bundle
