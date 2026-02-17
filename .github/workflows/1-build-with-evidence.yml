@@ -129,9 +129,9 @@ jobs:
       - name: Attest build provenance
         uses: actions/attest-build-provenance@v3
         with:
-          subject-name: ${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_VIRTUAL }}/${{ env.IMAGE_NAME }}
+          subject-name: oci://${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_VIRTUAL }}/${{ env.IMAGE_NAME }}
           subject-digest: ${{ steps.image-digest.outputs.image_digest }}
-          push-to-registry: false
+          push-to-registry: true
 
       - name: Evidence on docker
         id: evidence-on-docker
