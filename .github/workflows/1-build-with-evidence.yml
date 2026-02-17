@@ -90,6 +90,7 @@ jobs:
           openssl rsa -in ${{ secrets.PRIVATE_KEY_NAME }} -check
 
       - name: Build Docker image
+        if: false
         id: build-docker-image
         run: |
           URL=$(echo ${{ vars.ARTIFACTORY_URL }} | sed 's|^https://||')
@@ -101,6 +102,14 @@ jobs:
           --platform linux/amd64 \
           --metadata-file=build-metadata \
           --push
+      
+      - name: Build and Push Docker Image
+        id: build-and-push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_VIRTUAL}}/${{ env.IMAGE_NAME }}:${{ github.run_number }}
 
       - name: Create Build Info from Docker Build Metadata
         id: create-build-info
@@ -111,12 +120,14 @@ jobs:
           --build-number ${{ github.run_number }}
 
       - name: Cat build-metadata
+        if: false
         id: docker-build-metadata
         run: |
           echo "------build-metadata------"
-          echo "build-metadata=$(cat build-metadata)"
+          echo "build-metadata=$(cat ${{ steps.build-and-push.outputs.digest }})"
 
       - name: Extract image digest
+        if: false
         id: image-digest
         run: |
           DIGEST=$(jq -r '."containerimage.digest"' build-metadata)
@@ -129,8 +140,8 @@ jobs:
       - name: Attest build provenance
         uses: actions/attest-build-provenance@v3
         with:
-          subject-name: ${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_VIRTUAL }}/${{ env.IMAGE_NAME }}
-          subject-digest: ${{ steps.image-digest.outputs.image_digest }}
+          subject-name: oci://${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_VIRTUAL }}/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.build-and-push.outputs.digest }}
           push-to-registry: true
 
       - name: Evidence on docker
