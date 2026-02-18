@@ -123,6 +123,7 @@ jobs:
       # Generate and Upload Github Actions Build Provenance Evidence
       - name: Attest build provenance
         id: attest-build-provenance
+        if: false
         uses: actions/attest-build-provenance@v3
         with:
           subject-name: oci://${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_VIRTUAL }}/${{ env.IMAGE_NAME }}
