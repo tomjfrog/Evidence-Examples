@@ -80,7 +80,6 @@ jobs:
         uses: docker/setup-buildx-action@v3
         with:
           platforms: linux/amd64,linux/arm64
-          install: true
 
       - name: Setup Signing Key
         id: setup-signing-key
