@@ -88,20 +88,6 @@ jobs:
           echo "${{ secrets.PRIVATE_KEY_EXPORT }}" > "${{ secrets.PRIVATE_KEY_NAME }}"
           chmod 600 ${{ secrets.PRIVATE_KEY_NAME }}
           openssl rsa -in ${{ secrets.PRIVATE_KEY_NAME }} -check
-
-      - name: Build Docker image
-        if: false
-        id: build-docker-image
-        run: |
-          URL=$(echo ${{ vars.ARTIFACTORY_URL }} | sed 's|^https://||')
-          REPO_URL=${URL}'/${{ env.DOCKER_VIRTUAL}}'
-          docker build \
-          --build-arg REPO_URL=${REPO_URL} -f Dockerfile . \
-          --tag ${REPO_URL}/${{ env.IMAGE_NAME }}:${{ github.run_number }} \
-          --output=type=image \
-          --platform linux/amd64 \
-          --metadata-file=build-metadata \
-          --push
       
       - name: Build and Push Docker Image
         id: build-and-push
@@ -113,7 +99,8 @@ jobs:
           push: true
           tags: ${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_VIRTUAL}}/${{ env.IMAGE_NAME }}:${{ github.run_number }}
 
-      - name: Write image metadata file
+      # This steps generates the pre-requisite `--image-file` for the `jf rt build-docker-create` command.    
+      - name: Write Image Metada File
         id: write-build-metadata
         env:
           IMAGE_DIGEST: ${{ steps.build-and-push.outputs.digest }}
@@ -125,6 +112,7 @@ jobs:
           IMAGE_TAG="${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_VIRTUAL }}/${{ env.IMAGE_NAME }}:${{ github.run_number }}"
           printf '%s' "${IMAGE_TAG}@${IMAGE_DIGEST}" > "${{ env.DOCKER_METADATA }}"
 
+      # Generate a JFrog Platform Build Info from the Image Metadata File    
       - name: Create Build Info from Docker Build Metadata
         id: create-build-info
         run: |
@@ -133,25 +121,9 @@ jobs:
           --build-name ${{ env.BUILD_NAME }} \
           --build-number ${{ github.run_number }}
 
-      - name: Cat build-metadata
-        if: false
-        id: docker-build-metadata
-        run: |
-          echo "------build-metadata------"
-          echo "build-metadata=$(cat ${{ steps.build-and-push.outputs.digest }})"
-
-      - name: Extract image digest
-        if: false
-        id: image-digest
-        run: |
-          DIGEST=$(jq -r '."containerimage.digest"' "${{ env.DOCKER_METADATA }}")
-          if [ -z "$DIGEST" ] || [ "$DIGEST" = "null" ]; then
-            echo "Image digest not found in build-metadata" >&2
-            exit 1
-          fi
-          echo "image_digest=$DIGEST" >> $GITHUB_OUTPUT
-
+      # Generate and Upload Github Actions Build Provenance Evidence
       - name: Attest build provenance
+        id: attest-build-provenance
         uses: actions/attest-build-provenance@v3
         with:
           subject-name: ${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_VIRTUAL }}/${{ env.IMAGE_NAME }}
@@ -161,20 +133,21 @@ jobs:
       - name: Evidence on docker
         id: evidence-on-docker
         run: |
-          echo '{ "actor": "${{ github.actor }}", "date": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'" }' > sign.json
+          echo '{ "pipeline_actor": "${{ github.actor }}", "date": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'", "action": "Built and Pushed Docker Image" }' > build-and-push-attestation.json
           jf evd create \
           --package-name example-project-image \
           --package-version ${{ github.run_number }} \
           --package-repo-name ${{ env.DOCKER_VIRTUAL}} \
           --key "${{ secrets.PRIVATE_KEY_NAME }}" \
           --key-alias ${{ env.KEY_ALIAS }} \
-          --predicate ./sign.json \
+          --predicate ./build-and-push-attestation.json \
           --predicate-type https://jfrog.com/evidence/signature/v1 
           echo '🔎 Evidence attached: `signature` 🔏 ' 
 
       - name: Upload Readme File & Attach Evidence
         id: upload-readme-and-attach-evidence
         run: |
+          echo '{ "pipeline_actor": "${{ github.actor }}", "date": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'", "action": "Upload README.md to Generic Local Repository" }' > build-and-push-attestation.json
           jf rt upload ./README.md evdemo-generic-local/readme/${{ github.run_number }}/ \
           --build-name ${{ env.BUILD_NAME }} \
           --build-number ${{ github.run_number }}
@@ -182,7 +155,7 @@ jobs:
           --subject-repo-path evdemo-generic-local/readme/${{ github.run_number }}/README.md \
           --key "${{ secrets.PRIVATE_KEY_NAME }}" \
           --key-alias ${{ env.KEY_ALIAS }} \
-          --predicate ./sign.json \
+          --predicate ./build-and-push-attestation.json \
           --predicate-type https://jfrog.com/evidence/signature/v1
 
       - name: Collecting Information from Git
@@ -198,12 +171,12 @@ jobs:
         if: false
         id: sign-build-evidence
         run: |
-          echo '{ "actor": "${{ github.actor }}", "date": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'" }' > sign.json
+          echo '{ "pipelineactor": "${{ github.actor }}", "date": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'", "action": "Upload Build Info to JFrog Platform" }' > build-evidence.json
           jf evd create \
           --build-name ${{ env.BUILD_NAME }} \
           --build-number ${{ github.run_number }} \
           --project ${{ env.JF_PROJECT }} \
-          --predicate ./sign.json \
+          --predicate ./build-evidence.json \
           --predicate-type https://jfrog.com/evidence/build-signature/v1 \
           --key "${{ secrets.PRIVATE_KEY_NAME }}" \
           --key-alias ${{ env.KEY_ALIAS }}
@@ -234,7 +207,7 @@ jobs:
       - name: Evidence on release-bundle v2
         id: create-release-bundle-evidence
         run: |
-          echo '{ "actor": "${{ github.actor }}", "date": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'" }' > rbv2_evidence.json
+          echo '{ "pipelineactor": "${{ github.actor }}", "date": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'", "action": "Create Release Bundle" }' > rbv2_evidence.json
           JF_LINK=${{ env.JF_URL }}'/ui/artifactory/lifecycle/?bundleName='${{ env.BUNDLE_NAME }}'&bundleToFlash='${{ env.BUNDLE_NAME }}'&releaseBundleVersion='${{ github.run_number }}'&repositoryKey=release-bundles-v2&activeVersionTab=Version%20Timeline&activeKanbanTab=promotion'
           echo 'Test on Release bundle ['${{ env.BUNDLE_NAME }}':'${{ github.run_number }}']('${JF_LINK}') success' >> $GITHUB_STEP_SUMMARY
           jf evd create \
