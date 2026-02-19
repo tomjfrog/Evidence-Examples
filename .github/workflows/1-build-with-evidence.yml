@@ -35,7 +35,7 @@ env:
   # Used to verify the signature on attached evidence
   KEY_ALIAS: evidence-key
   # Project Name
-  JF_PROJECT: evdemo
+  JF_PROJECT: ${{ vars.JF_PROJECT }}
   # Sonar Cloud Token
 #  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 #  # Sonar Cloud Organization
@@ -51,15 +51,13 @@ jobs:
     steps:
       - name: Install jfrog cli
         uses: jfrog/setup-jfrog-cli@v4
+        id: cli
         with:
-          version: 2.88.0
+          version: 2.92.0
           oidc-provider-name: github-oidc-integration
           oidc-audience: jfrog-github
           disable-auto-build-publish: true
-        id: cli
-        env:
-          JF_URL: ${{ vars.JF_URL }}
-          JF_PROJECT: evdemo
+        
 
       - uses: actions/checkout@v4
 
@@ -111,7 +109,7 @@ jobs:
           IMAGE_TAG="${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_VIRTUAL }}/${{ env.IMAGE_NAME }}:${{ github.run_number }}"
           printf '%s' "${IMAGE_TAG}@${IMAGE_DIGEST}" > "${{ env.DOCKER_METADATA }}"
 
-      # Generate a JFrog Platform Build Info from the Image Metadata File    
+      # Generate a JFrog Platform Build Info from the Image Metadata File
       - name: Create Build Info from Docker Build Metadata
         id: create-build-info
         run: |
@@ -123,10 +121,9 @@ jobs:
       # Generate and Upload Github Actions Build Provenance Evidence
       - name: Attest build provenance
         id: attest-build-provenance
-        if: false
         uses: actions/attest-build-provenance@v3
         with:
-          subject-name: oci://${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_VIRTUAL }}/${{ env.IMAGE_NAME }}
+          subject-name: ${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_VIRTUAL }}/${{ env.IMAGE_NAME }}
           subject-digest: ${{ steps.build-and-push.outputs.digest }}
           push-to-registry: true
 
