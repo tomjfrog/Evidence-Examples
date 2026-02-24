@@ -6,9 +6,12 @@ on:
 permissions:
   id-token: write
   contents: read
+  attestations: write
+  packages: write
 
 # Global variables
 env:
+  JF_URL: ${{ vars.JF_URL }}
   # Name for the Docker image
   IMAGE_NAME: external-evidence-example-image
   # Name of the Docker Registry; i.e., the JFrog Cloud server base URL
@@ -47,19 +50,15 @@ env:
 jobs:
   Docker-Build-With-Evidence:
     runs-on: ubuntu-latest
-
     steps:
       - name: Install JFrog CLI
         uses: jfrog/setup-jfrog-cli@v4
+        id: cli
         with:
           version: 2.88.0
           oidc-provider-name: github-oidc-integration
           oidc-audience: jfrog-github
           disable-auto-build-publish: true
-        id: cli
-        env:
-          JF_URL: ${{ vars.JF_URL }}
-#          JF_PROJECT: ${{ vars.JF_URL }}
 
       - uses: actions/checkout@v4
 
@@ -68,7 +67,7 @@ jobs:
         with:
           registry: ${{ vars.ARTIFACTORY_URL }}
           username: ${{ steps.cli.outputs.oidc-user }}
-          password: ${{ steps.cli.outputs.oidc-token }}
+          password: ${{ steps.cli.outputs.oidc-token }}      
 
       - name: Set up QEMU
         id: setup-qemu
@@ -79,7 +78,6 @@ jobs:
         uses: docker/setup-buildx-action@v3
         with:
           platforms: linux/amd64,linux/arm64
-          install: true
 
       - name: Setup Signing Key
         id: setup-signing-key
@@ -103,26 +101,48 @@ jobs:
           java-version: '21' # Specify the desired Java version here
           distribution: 'temurin' # You can also use 'temurin', 'zulu', etc.
 
-      - name: Build Docker image
+      - name: Build and Push Docker Image
+        id: build-and-push
+        uses: docker/build-push-action@v6
+        with:
+          build-args: |
+            REPO_URL=${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_VIRTUAL }}
+          context: .
+          push: true
+          tags: ${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_VIRTUAL}}/${{ env.IMAGE_NAME }}:${{ github.run_number }}
+  
+      # This steps generates the pre-requisite `--image-file` for the `jf rt build-docker-create` command.    
+      - name: Write Image Metada File
+        id: write-build-metadata
+        env:
+          IMAGE_DIGEST: ${{ steps.build-and-push.outputs.digest }}
         run: |
-          URL=$(echo ${{ vars.ARTIFACTORY_URL }} | sed 's|^https://||')
-          REPO_URL=${URL}'/${{ env.DOCKER_VIRTUAL}}'
-          docker build \
-          --build-arg REPO_URL=${REPO_URL} \
-          -f Dockerfile . \
-          --tag ${REPO_URL}/${{ env.IMAGE_NAME }}:${{ github.run_number }} \
-          --output=type=image \
-          --platform linux/amd64 \
-          --metadata-file=${{ env.DOCKER_METADATA }} \
-          --push
+          if [ -z "$IMAGE_DIGEST" ]; then
+            echo "build-push-action did not return digest output" >&2
+            exit 1
+          fi
+          IMAGE_TAG="${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_VIRTUAL }}/${{ env.IMAGE_NAME }}:${{ github.run_number }}"
+          printf '%s' "${IMAGE_TAG}@${IMAGE_DIGEST}" > "${{ env.DOCKER_METADATA }}"
 
-      - name: Create Docker Build Info
+      # Generate a JFrog Platform Build Info from the Image Metadata File
+      - name: Create Build Info from Docker Build Metadata
         run: |
           jf rt build-docker-create ${{ env.DOCKER_VIRTUAL }} \
           --image-file ${{ env.DOCKER_METADATA }} \
           --build-name ${{ env.BUILD_NAME }} \
           --build-number ${{ github.run_number }}
+      
+      # Generate and Upload Github Actions Build Provenance Evidence
+      - name: Attest build provenance
+        id: attest-build-provenance
+        if: false
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-name: ${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_VIRTUAL }}/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.build-and-push.outputs.digest }}
+          push-to-registry: true    
 
+      # If this step fails with a 403, it's likely due to an expired token in sonar cloud. Verify the token is valid and try again.    
       - name: Run SonarScanner
         id: run-sonar-scanner
         env:
@@ -175,14 +195,14 @@ jobs:
 
       - name: Create and Attach Evidence on Docker Image
         run: |
-          echo '{ "actor": "${{ github.actor }}", "date": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'" }' > sign.json
+          echo '{ "pipeline_actor": "${{ github.actor }}", "date": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'", "action": "Built and Pushed Docker Image" }' > build-and-push-attestation.json
           jf evd create \
           --package-name ${{ env.IMAGE_NAME }} \
           --package-version ${{ github.run_number }} \
           --package-repo-name ${{ env.DOCKER_LOCAL }} \
           --key "${{ env.PRIVATE_KEY_NAME }}" \
           --key-alias ${{ env.KEY_ALIAS }} \
-          --predicate ./sign.json \
+          --predicate ./build-and-push-attestation.json \
           --predicate-type https://jfrog.com/evidence/signature/v1 
           echo '🔎 Evidence attached: `signature` 🔏 '
 
