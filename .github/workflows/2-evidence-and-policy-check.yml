@@ -214,6 +214,7 @@ jobs:
 
       - name: Attach Evidence on README file
         run: |
+          echo '{ "pipeline_actor": "${{ github.actor }}", "date": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'", "action": "I did this!" }' > sign.json
           jf evd create \
           --subject-repo-path ${{ env.GENERIC_LOCAL }}/readme/${{ github.run_number }}/README.md \
           --key "${{ env.PRIVATE_KEY_NAME }}" \
