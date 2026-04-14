@@ -131,9 +131,9 @@ jobs:
         run: |
           echo '{ "pipeline_actor": "${{ github.actor }}", "date": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'", "action": "Built and Pushed Docker Image" }' > build-and-push-attestation.json
           jf evd create \
-          --package-name example-project-image \
+          --package-name ${{ env.IMAGE_NAME }} \
           --package-version ${{ github.run_number }} \
-          --package-repo-name ${{ env.DOCKER_VIRTUAL}} \
+          --package-repo-name ${{ env.DOCKER_LOCAL }} \
           --key "${{ secrets.PRIVATE_KEY_NAME }}" \
           --key-alias ${{ env.KEY_ALIAS }} \
           --predicate ./build-and-push-attestation.json \
