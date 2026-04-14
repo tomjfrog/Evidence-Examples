@@ -1,0 +1,63 @@
+# Uploads a small text artifact to Artifactory and creates a GitHub Actions
+# SLSA build provenance attestation bound to that artifact. JFrog CLI
+# (setup-jfrog-cli post step) can ingest the attestation into Evidence when
+# subject-name matches the Artifactory repository path and subject-digest is
+# the file's sha256.
+name: 3 Github Build Provenance Minimal
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+  attestations: write
+  artifact-metadata: write
+
+env:
+  JF_URL: ${{ vars.JF_URL }}
+  GENERIC_LOCAL: evdemo-generic-local
+  ARTIFACT_NAME: build-provenance-demo.txt
+
+jobs:
+  upload-and-attest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install JFrog CLI
+        uses: jfrog/setup-jfrog-cli@v4
+        id: cli
+        with:
+          version: 2.92.0
+          oidc-provider-name: github-oidc-integration
+          oidc-audience: jfrog-github
+          disable-auto-build-publish: true
+
+      - uses: actions/checkout@v4
+
+      - name: Create text artifact
+        run: |
+          cat > "${{ env.ARTIFACT_NAME }}" << EOF
+          Repository: ${{ github.repository }}
+          Workflow: ${{ github.workflow }}
+          Run: ${{ github.run_id }}
+          SHA: ${{ github.sha }}
+          Built at (UTC): $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          EOF
+
+      - name: Upload to Artifactory generic repository
+        run: |
+          jf rt upload "./${{ env.ARTIFACT_NAME }}" \
+            "${{ env.GENERIC_LOCAL }}/gha-build-provenance/${{ github.run_number }}/"
+
+      - name: Compute subject digest (sha256)
+        id: digest
+        run: |
+          DIGEST=$(sha256sum "${{ env.ARTIFACT_NAME }}" | awk '{print "sha256:" $1}')
+          echo "artifact_digest=${DIGEST}" >> "${GITHUB_OUTPUT}"
+          echo "Subject digest: ${DIGEST}"
+
+      - name: Attest build provenance (GitHub → links to Artifactory path)
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-name: ${{ env.GENERIC_LOCAL }}/gha-build-provenance/${{ github.run_number }}/${{ env.ARTIFACT_NAME }}
+          subject-digest: ${{ steps.digest.outputs.artifact_digest }}

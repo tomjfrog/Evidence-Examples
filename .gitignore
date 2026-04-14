@@ -2,3 +2,4 @@
 /examples/sonar-scan-example/bin/*
 /examples/jira-transition-example/bin/*
 **/*.pdf
+.idea

@@ -125,7 +125,6 @@ jobs:
         with:
           subject-name: oci://${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_VIRTUAL }}/${{ env.IMAGE_NAME }}:${{ github.run_number }}
           subject-digest: ${{ steps.build-and-push.outputs.digest }}
-          push-to-registry: true
 
       - name: Evidence on docker
         id: evidence-on-docker
