@@ -1,103 +1,132 @@
-name: sonar-evidence-example
+# Builds and pushes the repo Docker image, runs SonarCloud, publishes build info,
+# then attaches Sonar analysis evidence via `jf evd create --integration sonar`.
+# Environment variables align with 1-build-with-evidence and 2-evidence-and-policy-check.
+name: Sonar evidence example
 
 on:
-  workflow_dispatch:  # This allows manual triggering of the workflow
+  workflow_dispatch:
 
 permissions:
   id-token: write
   contents: read
 
+env:
+  JF_URL: ${{ vars.JF_URL }}
+  JF_PROJECT: ${{ vars.JF_PROJECT }}
+  IMAGE_NAME: sonar-evidence-example-image
+  DOCKER_VIRTUAL: evdemo-docker-virtual
+  BUILD_NAME: sonar-evidence-example-build
+  DOCKER_METADATA: build-metadata
+  KEY_ALIAS: evidence-key
+  PRIVATE_KEY_NAME: ${{ secrets.PRIVATE_KEY_NAME }}
+  SONAR_ORGANIZATION: tomjfrog
+  SONAR_PROJECT_KEY: tomjfrog_Evidence-Examples
+
 jobs:
   docker-build-with-sonar-evidence:
     runs-on: ubuntu-latest
-    env:
-      JF_URL: ${{ vars.JF_URL }}
-      DOCKER_REPO: 'test-docker-local'
-      IMAGE_NAME: 'sonar-example-image:${{ github.run_number }}'
-      KEY_ALIAS: evidence-key
-      PRIVATE_KEY_NAME: ${{ secrets.PRIVATE_KEY_NAME }}
     steps:
-      - name: Display workflow and job names
-        run: |
-          echo "Workflow name: $GITHUB_WORKFLOW"
-          echo "Job name: $GITHUB_JOB"
-
-      - name: Setup Signing Key
-        id: setup-signing-key
-        run: |
-          echo "${{ secrets.PRIVATE_KEY_EXPORT }}" > "${{ secrets.PRIVATE_KEY_NAME }}"
-          chmod 600 ${{ secrets.PRIVATE_KEY_NAME }}
-          openssl rsa -in ${{ secrets.PRIVATE_KEY_NAME }} -check
-
-      - name: Install jfrog cli
-        id: setup-cli
+      - name: Install JFrog CLI
         uses: jfrog/setup-jfrog-cli@v4
+        id: cli
         with:
-          version: 2.88.0
+          version: 2.92.0
+          oidc-provider-name: github-oidc-integration
           oidc-audience: jfrog-github
           disable-auto-build-publish: true
-          oidc-provider-name: jfrog-github-oidc
-        env:
-          JF_URL: ${{ vars.JF_URL }}
 
       - uses: actions/checkout@v4
 
-      - name: Sonar scan
-        uses: SonarSource/sonarqube-scan-action@v5
-        continue-on-error: true  # Don't fail build on SonarCloud quality gate issues
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        with:
-          args: >
-            -Dsonar.projectKey=evidence_test
-            -Dsonar.organization=my-evidence-test-org
-            -Dsonar.projectBaseDir=examples/sonar-scan
-            -Dsonar.sources=.
-            -Dsonar.inclusions=**/*.go
-            -Dsonar.java.jdkHome=$JAVA_HOME
-            -Dsonar.verbose=true
+      - name: Setup signing key
+        run: |
+          echo "${{ secrets.PRIVATE_KEY_EXPORT }}" > "${{ secrets.PRIVATE_KEY_NAME }}"
+          chmod 600 "${{ secrets.PRIVATE_KEY_NAME }}"
+          openssl rsa -in "${{ secrets.PRIVATE_KEY_NAME }}" -check
 
-      - name: Log in to Artifactory Docker Registry
+      - name: Log in to Artifactory Docker registry
         uses: docker/login-action@v3
         with:
           registry: ${{ vars.ARTIFACTORY_URL }}
-          username: ${{ steps.setup-cli.outputs.oidc-user }}
-          password: ${{ steps.setup-cli.outputs.oidc-token }}
+          username: ${{ steps.cli.outputs.oidc-user }}
+          password: ${{ steps.cli.outputs.oidc-token }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
-      - name: Build and Push Docker image
-        uses: docker/build-push-action@v6
-        id: docker-build
         with:
+          platforms: linux/amd64,linux/arm64
+
+      - name: Install SonarQube Scanner
+        run: |
+          curl -sSL -o sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-6.2.1.4610.zip
+          unzip -q sonar-scanner.zip
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: temurin
+
+      - name: Build and push Docker image
+        id: docker-build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
           push: true
           provenance: false
-          platforms: linux/amd64 #, linux/arm64
-          build-args: REPO_URL=${{ vars.ARTIFACTORY_URL }}/example-project-docker-dev-remote
-          tags: ${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_REPO }}/${{ env.IMAGE_NAME }}
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            REPO_URL=${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_VIRTUAL }}
+          tags: ${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_VIRTUAL }}/${{ env.IMAGE_NAME }}:${{ github.run_number }}
 
-      - name: add docker package to build
+      - name: Write image metadata file
+        id: write-build-metadata
+        env:
+          IMAGE_DIGEST: ${{ steps.docker-build.outputs.digest }}
         run: |
-          echo "${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_REPO }}/${{ env.IMAGE_NAME }}@${{ steps.docker-build.outputs.digest }}" > metadata.json
-          jf rt build-docker-create ${{ env.DOCKER_REPO }} --image-file metadata.json --build-name $GITHUB_WORKFLOW --build-number ${{ github.run_number }}
+          if [ -z "$IMAGE_DIGEST" ]; then
+            echo "build-push-action did not return digest output" >&2
+            exit 1
+          fi
+          IMAGE_TAG="${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_VIRTUAL }}/${{ env.IMAGE_NAME }}:${{ github.run_number }}"
+          printf '%s' "${IMAGE_TAG}@${IMAGE_DIGEST}" > "${{ env.DOCKER_METADATA }}"
 
-      - name: Publish build info
-        if: ${{ true }}
+      - name: Add Docker package to build
         run: |
-          jf rt build-collect-env
-          jf rt build-add-git
-          jf rt build-publish         
+          jf rt build-docker-create ${{ env.DOCKER_VIRTUAL }} \
+            --image-file ${{ env.DOCKER_METADATA }} \
+            --build-name ${{ env.BUILD_NAME }} \
+            --build-number ${{ github.run_number }}
 
-      - name: Create evidence
+      - name: Run SonarScanner
+        id: run-sonar-scanner
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_REPORT_TASK_FILE: ${{ github.workspace }}/examples/sonar-scan/.scannerwork/report-task.txt
         run: |
-          # Attach evidence onto build using JFrog CLI                
+          $PWD/sonar-scanner-6.2.1.4610/bin/sonar-scanner \
+            -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }} \
+            -Dsonar.organization=${{ env.SONAR_ORGANIZATION }} \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.java.jdkHome="${JAVA_HOME}" \
+            -Dsonar.token="${SONAR_TOKEN}"
+
+      - name: Publish build info
+        run: |
+          jf rt build-add-git ${{ env.BUILD_NAME }} ${{ github.run_number }}
+          jf rt build-collect-env ${{ env.BUILD_NAME }} ${{ github.run_number }}
+          jf rt build-publish ${{ env.BUILD_NAME }} ${{ github.run_number }}
+
+      - name: Create Sonar evidence
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_REPORT_TASK_FILE: ${{ github.workspace }}/.scannerwork/report-task.txt
+        run: |
           jf evd create \
             --integration sonar \
-            --build-name $GITHUB_WORKFLOW \
-            --build-number "${{ github.run_number }}" \
-            --key ${{ env.PRIVATE_KEY_NAME }} \
+            --build-name ${{ env.BUILD_NAME }} \
+            --build-number ${{ github.run_number }} \
+            --project ${{ env.JF_PROJECT }} \
+            --key "${{ env.PRIVATE_KEY_NAME }}" \
             --key-alias ${{ env.KEY_ALIAS }}
