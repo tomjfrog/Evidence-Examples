@@ -57,7 +57,6 @@ jobs:
         with:
           version: 2.88.0
           oidc-provider-name: github-oidc-integration
-          oidc-audience: jfrog-github
           disable-auto-build-publish: true
 
       - uses: actions/checkout@v4
@@ -279,7 +278,6 @@ jobs:
         with:
           version: 2.88.0
           oidc-provider-name: github-oidc-integration
-          oidc-audience: jfrog-github
           disable-auto-build-publish: true
         id: cli
         env:
@@ -327,7 +325,6 @@ jobs:
         with:
           version: 2.88.0
           oidc-provider-name: github-oidc-integration
-          oidc-audience: jfrog-github
           disable-auto-build-publish: true
         id: cli
         env:
