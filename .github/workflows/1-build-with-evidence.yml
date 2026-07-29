@@ -15,7 +15,7 @@ env:
   # Name for the Docker image
   IMAGE_NAME: evdemo-image
   # Name of the Docker Registry; i.e., the JFrog Cloud server base URL
-  DOKCER_REGISTRY: tomjpd.jfrog.io
+  DOKCER_REGISTRY: ${{ vars.JF_DOCKER_REGISTRY }}
   # Virtual repository for the Docker image build and deploy operations
   DOCKER_VIRTUAL: evdemo-docker-virtual
   # Local Docker repository member of the virtual repository.  Required for Evidence attachment
