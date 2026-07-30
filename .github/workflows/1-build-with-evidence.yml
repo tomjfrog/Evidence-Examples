@@ -191,7 +191,6 @@ jobs:
           }
           EOF
           jf release-bundle-create ${{ env.BUNDLE_NAME }} ${{ github.run_number }} \
-          --signing-key "${{ secrets.GPG_KEY_NAME }}" \
           --spec bundle-spec.json \
           --sync=true \
           --project ${{ env.JF_PROJECT }}
