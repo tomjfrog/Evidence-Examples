@@ -83,7 +83,7 @@ jobs:
         run: |
           echo "${{ secrets.PRIVATE_KEY_EXPORT }}" > "${{ secrets.PRIVATE_KEY_NAME }}"
           chmod 600 ${{ secrets.PRIVATE_KEY_NAME }}
-          openssl rsa -in ${{ secrets.PRIVATE_KEY_NAME }} -check
+          openssl pkey -in ${{ secrets.PRIVATE_KEY_NAME }} -check -noout
       
       - name: Build and Push Docker Image
         id: build-and-push
