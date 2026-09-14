@@ -196,9 +196,12 @@ jobs:
       - name: Scan the npm project with Xray
         working-directory: ${{ env.LAB_DIR }}
         run: |
+          # --vuln is required alongside --project here: --project puts the scan
+          # into violations mode, and CycloneDX cannot represent a violation --
+          # only a vulnerability. Without it the CLI exits 1.
           jf scan . \
             --format=cyclonedx --sca --sbom \
-            --project ${{ env.JF_PROJECT }} \
+            --project ${{ env.JF_PROJECT }} --vuln \
             --fail=false > ../npm-sbom.cdx.json
           echo "npm SBOM $(wc -c < ../npm-sbom.cdx.json) bytes"
 
@@ -207,7 +210,7 @@ jobs:
           IMAGE="${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_VIRTUAL }}/${{ env.IMAGE_NAME }}:${{ steps.versions.outputs.image_tag }}"
           docker pull "$IMAGE"
           jf docker scan "$IMAGE" --format=cyclonedx --sca --sbom \
-            --project ${{ env.JF_PROJECT }} --fail=false > image-sbom.cdx.json
+            --project ${{ env.JF_PROJECT }} --vuln --fail=false > image-sbom.cdx.json
           # A second pass in SARIF, to compare how the two predicate shapes
           # render in the evidence graph.
           jf docker scan "$IMAGE" --format=sarif \
