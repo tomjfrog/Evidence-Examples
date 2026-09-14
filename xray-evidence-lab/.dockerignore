@@ -1,0 +1,6 @@
+node_modules
+npm-debug.log
+*.cdx.json
+*.sarif
+evidence-snapshot-*.json
+README.md

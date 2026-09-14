@@ -1,0 +1,448 @@
+# Xray results as provenance via JFrog Evidence.
+#
+# Publishes one Express app as two package types (npm + Docker), scans both with
+# Xray, attaches the scan output as signed Evidence, and measures whether the
+# platform generates any Xray evidence on its own.
+#
+# The measurement is the point. Evidence is listed at three points -- before any
+# `jf evd create` call, after the pipeline attaches its own predicates, and after
+# an AppTrust application version is promoted -- and the diff is written to the
+# job summary. Anything present in the first snapshot, or appearing after
+# promotion without provider-id `xray-lab`, came from the platform.
+#
+# All lab config is hardcoded below so the existing evdemo workflows, which share
+# vars.JF_PROJECT, are unaffected. Only vars.JF_URL and vars.ARTIFACTORY_URL are read.
+name: 4 Xray Evidence Lab
+
+on:
+  workflow_dispatch:
+    inputs:
+      attach_evidence:
+        description: "Attach Xray scan evidence. Set false for the negative-control run."
+        type: boolean
+        default: true
+      promote_to_qa:
+        description: "Promote the application version to QA."
+        type: boolean
+        default: true
+
+permissions:
+  id-token: write
+  contents: read
+  attestations: write
+
+env:
+  JF_URL: ${{ vars.JF_URL }}
+  JF_PROJECT: evidenceexamples
+  APP_KEY: hello-express
+
+  NPM_VIRTUAL: evidenceexamples-npm-virtual
+  NPM_LOCAL: evidenceexamples-npm-dev-local
+  DOCKER_VIRTUAL: evidenceexamples-docker-virtual
+  DOCKER_LOCAL: evidenceexamples-docker-dev-local
+  GENERIC_LOCAL: evidenceexamples-generic-local
+
+  IMAGE_NAME: hello-express
+  PKG_NAME: "@evidenceexamples/hello-express"
+  BUILD_NAME: hello-express-build
+  LAB_DIR: xray-evidence-lab
+
+  KEY_ALIAS: evidence-key
+  PROVIDER_ID: xray-lab
+  DOCKER_METADATA: build-metadata
+
+  # Registered under the Security evidence category by
+  # scripts/xray-evidence-lab-setup.sh so these land in Security, not Custom.
+  SBOM_PREDICATE_TYPE: https://cyclonedx.org/bom/v1.6
+  SARIF_PREDICATE_TYPE: https://jfrog.com/evidence/xray-sarif/v1
+
+jobs:
+  build-scan-attach:
+    runs-on: ubuntu-latest
+    outputs:
+      pkg_version: ${{ steps.versions.outputs.pkg_version }}
+      image_tag: ${{ steps.versions.outputs.image_tag }}
+      npm_subject: ${{ steps.versions.outputs.npm_subject }}
+      docker_subject: ${{ steps.versions.outputs.docker_subject }}
+    steps:
+      - name: Install JFrog CLI
+        uses: jfrog/setup-jfrog-cli@v4
+        id: cli
+        with:
+          version: 2.124.0
+          oidc-provider-name: github-oidc-integration
+          disable-auto-build-publish: true
+
+      - uses: actions/checkout@v4
+
+      - name: Resolve versions and evidence subjects
+        id: versions
+        run: |
+          PKG_VERSION="1.0.${{ github.run_number }}"
+          IMAGE_TAG="${{ github.run_number }}"
+          echo "pkg_version=${PKG_VERSION}" >> $GITHUB_OUTPUT
+          echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+          # Evidence subjects are repo paths. For an npm package that is the
+          # tarball; for a Docker image it is the manifest.
+          echo "npm_subject=${{ env.NPM_LOCAL }}/${{ env.PKG_NAME }}/-/hello-express-${PKG_VERSION}.tgz" >> $GITHUB_OUTPUT
+          echo "docker_subject=${{ env.DOCKER_LOCAL }}/${{ env.IMAGE_NAME }}/${IMAGE_TAG}/manifest.json" >> $GITHUB_OUTPUT
+
+      - name: Set the published package version
+        working-directory: ${{ env.LAB_DIR }}
+        run: npm version "${{ steps.versions.outputs.pkg_version }}" --no-git-tag-version --allow-same-version
+
+      - name: Point npm at Artifactory
+        working-directory: ${{ env.LAB_DIR }}
+        run: |
+          jf npmc --repo-resolve ${{ env.NPM_VIRTUAL }} --repo-deploy ${{ env.NPM_LOCAL }}
+
+      # Resolving through Artifactory is what puts the dependency tree into
+      # build-info, which is what makes the SBOM and the SCA scan meaningful.
+      - name: Install dependencies through Artifactory
+        working-directory: ${{ env.LAB_DIR }}
+        run: |
+          jf npm install \
+            --build-name ${{ env.BUILD_NAME }} \
+            --build-number ${{ github.run_number }} \
+            --project ${{ env.JF_PROJECT }}
+
+      - name: Publish the npm package
+        working-directory: ${{ env.LAB_DIR }}
+        run: |
+          jf npm publish \
+            --build-name ${{ env.BUILD_NAME }} \
+            --build-number ${{ github.run_number }} \
+            --project ${{ env.JF_PROJECT }}
+
+      - name: Write .npmrc for the Docker build
+        working-directory: ${{ env.LAB_DIR }}
+        env:
+          OIDC_TOKEN: ${{ steps.cli.outputs.oidc-token }}
+        run: |
+          # Passed to the build as a BuildKit secret, so it never lands in a layer.
+          REG_PATH="${{ vars.ARTIFACTORY_URL }}/artifactory/api/npm/${{ env.NPM_VIRTUAL }}"
+          {
+            echo "registry=https://${REG_PATH}/"
+            echo "//${REG_PATH}/:_authToken=${OIDC_TOKEN}"
+            echo "always-auth=true"
+          } > .npmrc
+
+      - name: Log in to the Artifactory Docker registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ vars.ARTIFACTORY_URL }}
+          username: ${{ steps.cli.outputs.oidc-user }}
+          password: ${{ steps.cli.outputs.oidc-token }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push the image
+        id: build-and-push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ env.LAB_DIR }}
+          push: true
+          provenance: false
+          build-args: |
+            REPO_URL=${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_VIRTUAL }}
+          secret-files: |
+            npmrc=${{ env.LAB_DIR }}/.npmrc
+          tags: ${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_VIRTUAL }}/${{ env.IMAGE_NAME }}:${{ steps.versions.outputs.image_tag }}
+
+      - name: Add the image to build-info
+        env:
+          IMAGE_DIGEST: ${{ steps.build-and-push.outputs.digest }}
+        run: |
+          if [ -z "$IMAGE_DIGEST" ]; then
+            echo "build-push-action did not return a digest" >&2
+            exit 1
+          fi
+          IMAGE_TAG="${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_VIRTUAL }}/${{ env.IMAGE_NAME }}:${{ steps.versions.outputs.image_tag }}"
+          printf '%s' "${IMAGE_TAG}@${IMAGE_DIGEST}" > "${{ env.DOCKER_METADATA }}"
+          jf rt build-docker-create ${{ env.DOCKER_VIRTUAL }} \
+            --image-file ${{ env.DOCKER_METADATA }} \
+            --build-name ${{ env.BUILD_NAME }} \
+            --build-number ${{ github.run_number }} \
+            --project ${{ env.JF_PROJECT }}
+
+      # ---------------------------------------------------------------------
+      # Snapshot A: both packages exist and Xray has had a chance to scan them,
+      # but the pipeline has not attached anything. Whatever shows up here was
+      # produced by the platform.
+      # ---------------------------------------------------------------------
+      - name: Wait for Xray to index the new packages
+        run: sleep 60
+
+      - name: 'Snapshot A: after publish, before any evidence'
+        env:
+          JF_TOKEN: ${{ steps.cli.outputs.oidc-token }}
+        run: |
+          python3 scripts/evidence_snapshot.py capture "A: after publish" snapshot-a.json \
+            "${{ steps.versions.outputs.npm_subject }}" \
+            "${{ steps.versions.outputs.docker_subject }}"
+
+      - name: Set up the evidence signing key
+        if: ${{ inputs.attach_evidence }}
+        run: |
+          echo "${{ secrets.PRIVATE_KEY_EXPORT }}" > "${{ secrets.PRIVATE_KEY_NAME }}"
+          chmod 600 "${{ secrets.PRIVATE_KEY_NAME }}"
+          openssl pkey -in "${{ secrets.PRIVATE_KEY_NAME }}" -check -noout
+
+      # `--sbom` only takes effect alongside `--sca` with cyclonedx output.
+      - name: Scan the npm project with Xray
+        working-directory: ${{ env.LAB_DIR }}
+        run: |
+          jf scan . \
+            --format=cyclonedx --sca --sbom \
+            --project ${{ env.JF_PROJECT }} \
+            --fail=false > ../npm-sbom.cdx.json
+          echo "npm SBOM $(wc -c < ../npm-sbom.cdx.json) bytes"
+
+      - name: Scan the image with Xray
+        run: |
+          IMAGE="${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_VIRTUAL }}/${{ env.IMAGE_NAME }}:${{ steps.versions.outputs.image_tag }}"
+          docker pull "$IMAGE"
+          jf docker scan "$IMAGE" --format=cyclonedx --sca --sbom \
+            --project ${{ env.JF_PROJECT }} --fail=false > image-sbom.cdx.json
+          # A second pass in SARIF, to compare how the two predicate shapes
+          # render in the evidence graph.
+          jf docker scan "$IMAGE" --format=sarif \
+            --project ${{ env.JF_PROJECT }} --fail=false > image-scan.sarif
+          echo "image SBOM $(wc -c < image-sbom.cdx.json) bytes, SARIF $(wc -c < image-scan.sarif) bytes"
+
+      - name: Summarise the findings
+        run: |
+          python3 - <<'PY' >> $GITHUB_STEP_SUMMARY
+          import json, collections
+          print("## Xray SCA findings\n")
+          print("| Artifact | Components | Vulnerabilities |")
+          print("|---|---|---|")
+          for label, path in (("npm project", "npm-sbom.cdx.json"), ("Docker image", "image-sbom.cdx.json")):
+              try:
+                  d = json.load(open(path))
+              except Exception as e:
+                  print(f"| {label} | parse error | {e} |"); continue
+              print(f"| {label} | {len(d.get('components') or [])} | {len(d.get('vulnerabilities') or [])} |")
+          print()
+          try:
+              d = json.load(open("image-sbom.cdx.json"))
+              sev = collections.Counter()
+              for v in (d.get("vulnerabilities") or []):
+                  for r in (v.get("ratings") or []):
+                      sev[(r.get("severity") or "unknown").lower()] += 1
+                      break
+              if sev:
+                  print("Image vulnerabilities by severity: " +
+                        ", ".join(f"{k}={v}" for k, v in sorted(sev.items())))
+          except Exception:
+              pass
+          PY
+
+      - name: Attach the scan evidence
+        if: ${{ inputs.attach_evidence }}
+        run: |
+          # provider-id marks these as pipeline-attached, which is what lets the
+          # report tell them apart from platform-generated records.
+          jf evd create \
+            --package-name "${{ env.PKG_NAME }}" \
+            --package-version "${{ steps.versions.outputs.pkg_version }}" \
+            --package-repo-name ${{ env.NPM_LOCAL }} \
+            --project ${{ env.JF_PROJECT }} \
+            --key "${{ secrets.PRIVATE_KEY_NAME }}" --key-alias ${{ env.KEY_ALIAS }} \
+            --provider-id ${{ env.PROVIDER_ID }} \
+            --predicate ./npm-sbom.cdx.json \
+            --predicate-type ${{ env.SBOM_PREDICATE_TYPE }}
+
+          jf evd create \
+            --package-name ${{ env.IMAGE_NAME }} \
+            --package-version "${{ steps.versions.outputs.image_tag }}" \
+            --package-repo-name ${{ env.DOCKER_LOCAL }} \
+            --project ${{ env.JF_PROJECT }} \
+            --key "${{ secrets.PRIVATE_KEY_NAME }}" --key-alias ${{ env.KEY_ALIAS }} \
+            --provider-id ${{ env.PROVIDER_ID }} \
+            --predicate ./image-sbom.cdx.json \
+            --predicate-type ${{ env.SBOM_PREDICATE_TYPE }}
+
+          jf evd create \
+            --package-name ${{ env.IMAGE_NAME }} \
+            --package-version "${{ steps.versions.outputs.image_tag }}" \
+            --package-repo-name ${{ env.DOCKER_LOCAL }} \
+            --project ${{ env.JF_PROJECT }} \
+            --key "${{ secrets.PRIVATE_KEY_NAME }}" --key-alias ${{ env.KEY_ALIAS }} \
+            --provider-id ${{ env.PROVIDER_ID }} \
+            --predicate ./image-scan.sarif \
+            --predicate-type ${{ env.SARIF_PREDICATE_TYPE }}
+
+          echo "Attached SBOM evidence to both packages, plus SARIF on the image." >> $GITHUB_STEP_SUMMARY
+
+      - name: Publish build info
+        run: |
+          jf rt build-add-git ${{ env.BUILD_NAME }} ${{ github.run_number }}
+          jf rt build-collect-env ${{ env.BUILD_NAME }} ${{ github.run_number }}
+          jf rt build-publish ${{ env.BUILD_NAME }} ${{ github.run_number }} --project ${{ env.JF_PROJECT }}
+
+      # A build is invisible to Xray until it has been published, so it cannot be
+      # added to the index during initial setup. This adds it on first sight.
+      # The endpoint replaces the whole list, hence the read-merge-write.
+      - name: Add the build to the Xray index
+        run: |
+          IDX_URL="/xray/api/v1/binMgr/default/builds?projectKey=${{ env.JF_PROJECT }}"
+          CUR=$(jf api "$IDX_URL" || echo '{}')
+          MERGED=$(printf '%s' "$CUR" | jq -c --arg b "${{ env.BUILD_NAME }}" \
+            'if (.indexed_builds // []) | index($b) then empty
+             else {indexed_builds: ((.indexed_builds // []) + [$b])} end')
+          if [ -z "$MERGED" ]; then
+            echo "build ${{ env.BUILD_NAME }} already indexed"
+          else
+            jf api -X PUT "$IDX_URL" --data "$MERGED" \
+              || echo "build indexing failed; build-scan may report nothing"
+          fi
+
+      # Needs the build watch created by the setup script; without one this
+      # reports nothing even though the scan runs. --vuln bypasses policy, so
+      # this particular invocation works regardless -- at the cost of not
+      # exercising the watch.
+      - name: Scan the published build
+        run: |
+          jf build-scan ${{ env.BUILD_NAME }} ${{ github.run_number }} \
+            --project ${{ env.JF_PROJECT }} \
+            --vuln --format=sarif --fail=false > build-scan.sarif || true
+          echo "build scan $(wc -c < build-scan.sarif) bytes"
+
+      - name: Attach the build scan evidence
+        if: ${{ inputs.attach_evidence }}
+        run: |
+          if [ -s build-scan.sarif ]; then
+            jf evd create \
+              --build-name ${{ env.BUILD_NAME }} \
+              --build-number ${{ github.run_number }} \
+              --project ${{ env.JF_PROJECT }} \
+              --key "${{ secrets.PRIVATE_KEY_NAME }}" --key-alias ${{ env.KEY_ALIAS }} \
+              --provider-id ${{ env.PROVIDER_ID }} \
+              --predicate ./build-scan.sarif \
+              --predicate-type ${{ env.SARIF_PREDICATE_TYPE }}
+          else
+            echo "build-scan produced no output, skipping build evidence" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      # An independent provenance source to compare Xray's output against.
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-name: oci://${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_VIRTUAL }}/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.build-and-push.outputs.digest }}
+
+      - name: 'Snapshot B: after the pipeline attached its evidence'
+        env:
+          JF_TOKEN: ${{ steps.cli.outputs.oidc-token }}
+        run: |
+          python3 scripts/evidence_snapshot.py capture "B: after attach" snapshot-b.json \
+            "${{ steps.versions.outputs.npm_subject }}" \
+            "${{ steps.versions.outputs.docker_subject }}"
+
+      - name: Upload the scan reports and snapshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: xray-evidence-lab-${{ github.run_number }}
+          path: |
+            npm-sbom.cdx.json
+            image-sbom.cdx.json
+            image-scan.sarif
+            build-scan.sarif
+            snapshot-a.json
+            snapshot-b.json
+          if-no-files-found: warn
+
+  apptrust-and-measure:
+    needs: build-scan-attach
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install JFrog CLI
+        uses: jfrog/setup-jfrog-cli@v4
+        id: cli
+        with:
+          version: 2.124.0
+          oidc-provider-name: github-oidc-integration
+          disable-auto-build-publish: true
+
+      - uses: actions/checkout@v4
+
+      - name: Download the snapshots from the build job
+        uses: actions/download-artifact@v4
+        with:
+          name: xray-evidence-lab-${{ github.run_number }}
+
+      # An application version groups the npm package and the image into one
+      # releasable unit. Promotion is the documented trigger for Xray-generated
+      # evidence, so this is the step most likely to produce it.
+      - name: Create the application version
+        run: |
+          # No --project flag here: the application key already resolves to its project.
+          jf apptrust version-create ${{ env.APP_KEY }} "1.0.${{ github.run_number }}" \
+            --source-type-builds "name=${{ env.BUILD_NAME }}, id=${{ github.run_number }}, repo-key=${{ env.JF_PROJECT }}-build-info" \
+            --tag "xray-evidence-lab" \
+            --sync=true
+
+      - name: Promote the application version to QA
+        if: ${{ inputs.promote_to_qa }}
+        run: |
+          # Expected to be blocked once the Unified Policy gate is switched from
+          # warning to block and evidence is withheld.
+          set +e
+          jf apptrust version-promote ${{ env.APP_KEY }} "1.0.${{ github.run_number }}" \
+            "${{ env.JF_PROJECT }}-QA" --sync=true
+          code=$?
+          set -e
+          if [ $code -ne 0 ]; then
+            echo "### Promotion to QA was blocked (exit ${code})" >> $GITHUB_STEP_SUMMARY
+            echo "Expected when the SBOM evidence gate is in block mode and evidence was withheld." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### Promoted to ${{ env.JF_PROJECT }}-QA" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Wait for promotion-triggered scans
+        run: sleep 90
+
+      - name: 'Snapshot C: after the application version was promoted'
+        env:
+          JF_TOKEN: ${{ steps.cli.outputs.oidc-token }}
+        run: |
+          python3 scripts/evidence_snapshot.py capture "C: after promote" snapshot-c.json \
+            "${{ needs.build-scan-attach.outputs.npm_subject }}" \
+            "${{ needs.build-scan-attach.outputs.docker_subject }}"
+
+      - name: Report which evidence the platform produced
+        env:
+          JF_TOKEN: ${{ steps.cli.outputs.oidc-token }}
+        run: |
+          python3 scripts/evidence_snapshot.py report evidence-report.md \
+            snapshot-a.json snapshot-b.json snapshot-c.json
+          cat evidence-report.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Record the application version evidence and status
+        env:
+          JF_TOKEN: ${{ steps.cli.outputs.oidc-token }}
+        run: |
+          VER="1.0.${{ github.run_number }}"
+          {
+            echo "## AppTrust application version \`${{ env.APP_KEY }}:${VER}\`"
+            echo
+            echo '```json'
+            curl -sS -H "Authorization: Bearer ${JF_TOKEN}" \
+              "${{ vars.JF_URL }}/apptrust/api/v1/applications/${{ env.APP_KEY }}/versions/${VER}" \
+              | python3 -m json.tool || echo '{}'
+            echo '```'
+          } >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload the report
+        uses: actions/upload-artifact@v4
+        with:
+          name: xray-evidence-report-${{ github.run_number }}
+          path: |
+            evidence-report.md
+            snapshot-*.json
+          if-no-files-found: warn

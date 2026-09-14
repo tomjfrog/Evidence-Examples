@@ -3,3 +3,8 @@
 /examples/jira-transition-example/bin/*
 **/*.pdf
 .idea
+node_modules/
+.npmrc
+/xray-evidence-lab/*.cdx.json
+/xray-evidence-lab/*.sarif
+/xray-evidence-lab/evidence-snapshot-*.json

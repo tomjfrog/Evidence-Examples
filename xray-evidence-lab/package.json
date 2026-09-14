@@ -1,0 +1,19 @@
+{
+  "name": "@evidenceexamples/hello-express",
+  "version": "1.0.0",
+  "description": "Express hello-world used as the subject for Xray-results-as-Evidence experiments",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "license": "Apache-2.0",
+  "dependencies": {
+    "express": "4.17.1",
+    "lodash": "4.17.20",
+    "axios": "0.21.1",
+    "minimist": "1.2.5",
+    "jsonwebtoken": "8.5.1",
+    "moment": "2.29.1",
+    "tar": "6.1.0"
+  }
+}
