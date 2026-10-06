@@ -69,7 +69,6 @@ jobs:
         uses: jfrog/setup-jfrog-cli@v4
         id: cli
         with:
-          version: 2.124.0
           oidc-provider-name: github-oidc-integration
           disable-auto-build-publish: true
 
@@ -336,7 +335,7 @@ jobs:
       - name: Attest build provenance
         uses: actions/attest-build-provenance@v3
         with:
-          subject-name: oci://${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_VIRTUAL }}/${{ env.IMAGE_NAME }}
+          subject-name: ${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_VIRTUAL }}/${{ env.IMAGE_NAME }}
           subject-digest: ${{ steps.build-and-push.outputs.digest }}
 
       - name: 'Snapshot B: after the pipeline attached its evidence'
