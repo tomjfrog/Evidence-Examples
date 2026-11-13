@@ -2,8 +2,9 @@
 # and creates a GitHub Actions SLSA build provenance attestation bound to that
 # image. The setup-jfrog-cli post step ingests the attestation into JFrog
 # Evidence (jf evd create --sigstore-bundle) when:
-#   - subject-name is the fully qualified image name in Artifactory
-#     (<registry-host>/<docker-repo>/<image>), with no oci:// prefix and no tag
+#   - subject-name is oci://<registry-host>/<docker-repo>/<image> with no tag.
+#     Without the oci:// (or docker://) prefix the CLI treats the name as a
+#     literal Artifactory path and fails with "Subject ... is not found".
 #   - subject-digest is the image manifest digest (the manifest list digest for
 #     multi-arch images), as returned by docker/build-push-action
 # The verify-evidence job runs after the post step and confirms the evidence
@@ -83,7 +84,7 @@ jobs:
         id: attest
         uses: actions/attest-build-provenance@v3
         with:
-          subject-name: ${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_LOCAL }}/${{ env.IMAGE_NAME }}
+          subject-name: oci://${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_LOCAL }}/${{ env.IMAGE_NAME }}
           subject-digest: ${{ steps.build-and-push.outputs.digest }}
 
       - name: Job summary
