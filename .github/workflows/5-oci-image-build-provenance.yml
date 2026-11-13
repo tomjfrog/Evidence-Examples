@@ -9,7 +9,7 @@
 #     multi-arch images), as returned by docker/build-push-action
 # The verify-evidence job runs after the post step and confirms the evidence
 # is attached to the image.
-name: OCI Image Build Provenance
+name: "5 OCI Image Build Provenance"
 
 on:
   workflow_dispatch:
