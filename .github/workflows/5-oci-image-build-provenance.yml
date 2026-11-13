@@ -123,9 +123,12 @@ jobs:
           SUBJECT_REPO_PATH: ${{ needs.build-and-attest.outputs.subject-repo-path }}
         run: |
           for attempt in 1 2 3 4 5; do
-            if jf evd get --subject-repo-path "${SUBJECT_REPO_PATH}" --format json --output evidence.json \
+            if jf evd get --subject-repo-path "${SUBJECT_REPO_PATH}" --include-predicate --format json --output evidence.json \
               && grep -q "https://slsa.dev/provenance/v1" evidence.json; then
               echo "SLSA provenance evidence found on ${SUBJECT_REPO_PATH}"
+              echo "::group::Evidence on ${SUBJECT_REPO_PATH}"
+              jq . evidence.json
+              echo "::endgroup::"
               echo "SLSA provenance evidence verified on \`${SUBJECT_REPO_PATH}\`" >> "${GITHUB_STEP_SUMMARY}"
               exit 0
             fi
@@ -133,5 +136,5 @@ jobs:
             sleep 10
           done
           echo "No https://slsa.dev/provenance/v1 evidence found on ${SUBJECT_REPO_PATH}" >&2
-          [ -f evidence.json ] && cat evidence.json
+          [ -f evidence.json ] && jq . evidence.json
           exit 1
