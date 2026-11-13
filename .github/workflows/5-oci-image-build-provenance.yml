@@ -1,0 +1,136 @@
+# Builds a multi-arch OCI image, pushes it to an Artifactory Docker repository,
+# and creates a GitHub Actions SLSA build provenance attestation bound to that
+# image. The setup-jfrog-cli post step ingests the attestation into JFrog
+# Evidence (jf evd create --sigstore-bundle) when:
+#   - subject-name is the fully qualified image name in Artifactory
+#     (<registry-host>/<docker-repo>/<image>), with no oci:// prefix and no tag
+#   - subject-digest is the image manifest digest (the manifest list digest for
+#     multi-arch images), as returned by docker/build-push-action
+# The verify-evidence job runs after the post step and confirms the evidence
+# is attached to the image.
+name: OCI Image Build Provenance
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+  attestations: write
+  artifact-metadata: write
+
+env:
+  JF_URL: ${{ vars.JF_URL }}
+  IMAGE_NAME: evdemo-provenance-image
+  # Virtual repository used to pull the Dockerfile base images
+  DOCKER_VIRTUAL: evdemo-docker-virtual
+  # Local repository the image is pushed to; also the evidence subject
+  DOCKER_LOCAL: evdemo-docker-local
+
+jobs:
+  build-and-attest:
+    runs-on: ubuntu-latest
+    outputs:
+      subject-repo-path: ${{ steps.summary.outputs.subject_repo_path }}
+    steps:
+      - name: Install JFrog CLI
+        uses: jfrog/setup-jfrog-cli@v4
+        id: cli
+        with:
+          oidc-provider-name: github-oidc-integration
+          disable-auto-build-publish: true
+          disable-auto-evidence-collection: false
+
+      - uses: actions/checkout@v4
+
+      - name: Log in to Artifactory Docker Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ vars.ARTIFACTORY_URL }}
+          username: ${{ steps.cli.outputs.oidc-user }}
+          password: ${{ steps.cli.outputs.oidc-token }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+
+      - name: Build and Push Docker Image
+        id: build-and-push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            REPO_URL=${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_VIRTUAL }}
+          push: true
+          tags: ${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_LOCAL }}/${{ env.IMAGE_NAME }}:${{ github.run_number }}
+
+      - name: Check image digest
+        env:
+          IMAGE_DIGEST: ${{ steps.build-and-push.outputs.digest }}
+        run: |
+          if [ -z "$IMAGE_DIGEST" ]; then
+            echo "build-push-action did not return digest output" >&2
+            exit 1
+          fi
+          echo "Subject digest: ${IMAGE_DIGEST}"
+
+      - name: Attest build provenance (auto-uploaded to JFrog Evidence)
+        id: attest
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-name: ${{ vars.ARTIFACTORY_URL }}/${{ env.DOCKER_LOCAL }}/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.build-and-push.outputs.digest }}
+
+      - name: Job summary
+        id: summary
+        env:
+          IMAGE_DIGEST: ${{ steps.build-and-push.outputs.digest }}
+          ATTESTATION_URL: ${{ steps.attest.outputs.attestation-url }}
+        run: |
+          IMAGE_REF="${{ vars.ARTIFACTORY_URL }}/${DOCKER_LOCAL}/${IMAGE_NAME}:${{ github.run_number }}"
+          SUBJECT_REPO_PATH="${DOCKER_LOCAL}/${IMAGE_NAME}/${{ github.run_number }}/list.manifest.json"
+          echo "subject_repo_path=${SUBJECT_REPO_PATH}" >> "${GITHUB_OUTPUT}"
+          {
+            echo "### OCI Image Build Provenance"
+            echo ""
+            echo "- Image: \`${IMAGE_REF}\`"
+            echo "- Digest: \`${IMAGE_DIGEST}\`"
+            echo "- GitHub attestation: ${ATTESTATION_URL}"
+            echo "- Artifactory: ${JF_URL}/ui/repos/tree/General/${DOCKER_LOCAL}/${IMAGE_NAME}/${{ github.run_number }}"
+            echo ""
+            echo "The setup-jfrog-cli post step uploads the attestation to JFrog Evidence when this job ends."
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+  verify-evidence:
+    needs: build-and-attest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install JFrog CLI
+        uses: jfrog/setup-jfrog-cli@v4
+        with:
+          oidc-provider-name: github-oidc-integration
+          disable-auto-build-publish: true
+          disable-job-summary: true
+
+      - name: Verify SLSA provenance evidence on the image
+        env:
+          SUBJECT_REPO_PATH: ${{ needs.build-and-attest.outputs.subject-repo-path }}
+        run: |
+          for attempt in 1 2 3 4 5; do
+            if jf evd get --subject-repo-path "${SUBJECT_REPO_PATH}" --format json --output evidence.json \
+              && grep -q "https://slsa.dev/provenance/v1" evidence.json; then
+              echo "SLSA provenance evidence found on ${SUBJECT_REPO_PATH}"
+              echo "SLSA provenance evidence verified on \`${SUBJECT_REPO_PATH}\`" >> "${GITHUB_STEP_SUMMARY}"
+              exit 0
+            fi
+            echo "Attempt ${attempt}: evidence not found yet, retrying in 10s"
+            sleep 10
+          done
+          echo "No https://slsa.dev/provenance/v1 evidence found on ${SUBJECT_REPO_PATH}" >&2
+          [ -f evidence.json ] && cat evidence.json
+          exit 1
